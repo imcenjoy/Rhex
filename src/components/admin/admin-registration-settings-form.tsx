@@ -577,6 +577,26 @@ Passkey Origin = ${resolvedPasskeyOrigin}`}</code></pre>
         </>
       ) : null}
 
+      {activeSubTab === "sms" ? (
+        <div className="rounded-xl border border-border p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">短信发送配置</h3>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">配置宿主内置阿里云短信发送器，用于手机注册、短信登录、手机绑定和手机找回密码。插件注册 `sms` provider 后会优先接管发送。</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <AdminBooleanSelectField label="启用内置阿里云短信" checked={draft.smsEnabled} onChange={(value) => updateDraftField("smsEnabled", value)} />
+            <TextField label="AccessKey ID" value={draft.smsAliyunAccessKeyId} onChange={(value) => updateDraftField("smsAliyunAccessKeyId", value)} placeholder="填写阿里云 AccessKey ID" />
+            <TextField label="AccessKey Secret" type="password" value={draft.smsAliyunAccessKeySecret} onChange={(value) => updateDraftField("smsAliyunAccessKeySecret", value)} placeholder="填写阿里云 AccessKey Secret" />
+            <TextField label="Endpoint" value={draft.smsAliyunEndpoint} onChange={(value) => updateDraftField("smsAliyunEndpoint", value)} placeholder="dysmsapi.aliyuncs.com" />
+            <TextField label="Region ID" value={draft.smsAliyunRegionId} onChange={(value) => updateDraftField("smsAliyunRegionId", value)} placeholder="cn-hangzhou" />
+            <TextField label="短信签名" value={draft.smsAliyunSignName} onChange={(value) => updateDraftField("smsAliyunSignName", value)} placeholder="填写已审核通过的短信签名" />
+            <TextField label="验证码模板 Code" value={draft.smsAliyunTemplateCode} onChange={(value) => updateDraftField("smsAliyunTemplateCode", value)} placeholder="如 SMS_123456789" />
+            <TextField label="验证码变量名" value={draft.smsAliyunCodeParamName} onChange={(value) => updateDraftField("smsAliyunCodeParamName", value)} placeholder="code" />
+          </div>
+          <p className="text-xs leading-6 text-muted-foreground">阿里云验证码模板中需要有一个变量，默认变量名为 `code`；如果模板使用 <code>{'${verifyCode}'}</code> 之类的变量名，请在这里改成对应名称。AccessKey 会写入站点敏感配置，仅服务端读取。</p>
+        </div>
+      ) : null}
+
       {activeSubTab === "smtp" ? (
         <div className="rounded-xl border border-border p-5 space-y-4">
           <div>

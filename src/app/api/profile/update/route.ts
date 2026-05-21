@@ -26,6 +26,8 @@ type ProfileUpdateResponse = {
   avatarPath: string
   email: string
   emailVerifiedAt?: string | null
+  phone: string
+  phoneVerifiedAt?: string | null
   activityVisibility: UserProfileVisibility
   introductionVisibility: UserProfileVisibility
   points: number
@@ -40,6 +42,8 @@ function toProfileUpdateResponse(input: {
   avatarPath: string | null
   email: string | null
   emailVerifiedAt?: Date | string | null
+  phone: string | null
+  phoneVerifiedAt?: Date | string | null
   activityVisibility: UserProfileVisibility
   introductionVisibility: UserProfileVisibility
   points: number
@@ -55,6 +59,10 @@ function toProfileUpdateResponse(input: {
     emailVerifiedAt: typeof input.emailVerifiedAt === "string"
       ? input.emailVerifiedAt
       : input.emailVerifiedAt?.toISOString() ?? null,
+    phone: input.phone ?? "",
+    phoneVerifiedAt: typeof input.phoneVerifiedAt === "string"
+      ? input.phoneVerifiedAt
+      : input.phoneVerifiedAt?.toISOString() ?? null,
     activityVisibility: input.activityVisibility,
     introductionVisibility: input.introductionVisibility,
     points: input.points,
@@ -71,6 +79,8 @@ function mapAddonUserProfileRecord(input: {
   avatarPath: string | null
   email: string | null
   emailVerifiedAt?: Date | string | null
+  phone: string | null
+  phoneVerifiedAt?: Date | string | null
   activityVisibility: UserProfileVisibility
   introductionVisibility: UserProfileVisibility
   points: number
@@ -87,6 +97,10 @@ function mapAddonUserProfileRecord(input: {
     emailVerifiedAt: typeof input.emailVerifiedAt === "string"
       ? input.emailVerifiedAt
       : input.emailVerifiedAt?.toISOString() ?? null,
+    phone: input.phone,
+    phoneVerifiedAt: typeof input.phoneVerifiedAt === "string"
+      ? input.phoneVerifiedAt
+      : input.phoneVerifiedAt?.toISOString() ?? null,
     activityVisibility: input.activityVisibility,
     introductionVisibility: input.introductionVisibility,
     points: input.points,
@@ -109,9 +123,11 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
   }
 
   const email = validated.data.email
+  const phone = validated.data.phone
   const gender = validated.data.gender || "unknown"
   const avatarPath = typeof body.avatarPath === "string" ? body.avatarPath.trim() : ""
   const emailCode = typeof body.emailCode === "string" ? body.emailCode.trim() : ""
+  const phoneCode = typeof body.phoneCode === "string" ? body.phoneCode.trim() : ""
 
   const dbUser = await prisma.user.findUnique({
     where: { id: currentUser.id },
@@ -124,6 +140,8 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
       avatarPath: true,
       email: true,
       emailVerifiedAt: true,
+      phone: true,
+      phoneVerifiedAt: true,
       signature: true,
       points: true,
     },
@@ -134,6 +152,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
   }
 
   const nextEmail = email || null
+  const nextPhone = phone || null
   const currentProfileSettings = resolveUserProfileSettings(dbUser.signature)
   const activityVisibilityInput = typeof body.activityVisibility === "string" ? body.activityVisibility.trim().toUpperCase() : null
   const introductionVisibilityInput = typeof body.introductionVisibility === "string" ? body.introductionVisibility.trim().toUpperCase() : null
@@ -161,6 +180,8 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     avatarPath: dbUser.avatarPath,
     email: dbUser.email,
     emailVerifiedAt: dbUser.emailVerifiedAt,
+    phone: dbUser.phone,
+    phoneVerifiedAt: dbUser.phoneVerifiedAt,
     activityVisibility: currentProfileSettings.activityVisibility,
     introductionVisibility: currentProfileSettings.introductionVisibility,
     points: dbUser.points,
@@ -172,6 +193,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     nextGender: gender,
     nextAvatarPath: avatarPath,
     nextEmail,
+    nextPhone,
     nextActivityVisibility: activityVisibility,
     nextIntroductionVisibility: introductionVisibility,
   }
@@ -208,6 +230,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     introduction: nextIntroduction,
   })
   const emailChanged = (dbUser.email ?? null) !== nextEmail
+  const phoneChanged = (dbUser.phone ?? null) !== nextPhone
   const currentNickname = (dbUser.nickname ?? "").trim()
   const currentBio = (dbUser.bio ?? "").trim()
   const currentIntroduction = currentProfileSettings.introduction.trim()
@@ -283,7 +306,12 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     apiError(400, "邮箱已验证，不能再修改邮箱地址")
   }
 
+  if (dbUser.phoneVerifiedAt && phoneChanged) {
+    apiError(400, "手机号已验证，不能再修改手机号")
+  }
+
   let emailVerifiedAt = dbUser.emailVerifiedAt
+  let phoneVerifiedAt = dbUser.phoneVerifiedAt
 
   if (!dbUser.emailVerifiedAt && nextEmail && emailCode) {
     await verifyCode({
@@ -292,6 +320,15 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
       code: emailCode,
     })
     emailVerifiedAt = new Date()
+  }
+
+  if (!dbUser.phoneVerifiedAt && nextPhone && phoneCode) {
+    await verifyCode({
+      channel: VerificationChannel.PHONE,
+      target: nextPhone,
+      code: phoneCode,
+    })
+    phoneVerifiedAt = new Date()
   }
 
   if (nextEmail) {
@@ -310,6 +347,22 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
 
     if (existingEmailUser) {
       apiError(409, "邮箱已被使用")
+    }
+  }
+
+  if (nextPhone) {
+    const existingPhoneUser = await prisma.user.findFirst({
+      where: {
+        phone: nextPhone,
+        id: {
+          not: currentUser.id,
+        },
+      },
+      select: { id: true },
+    })
+
+    if (existingPhoneUser) {
+      apiError(409, "手机号已被使用")
     }
   }
 
@@ -333,6 +386,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     gender,
     avatarPath,
     email: nextEmail,
+    phone: nextPhone,
     activityVisibility,
     introductionVisibility,
     nicknameChanged,
@@ -340,6 +394,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     introductionChanged,
     avatarChanged,
     emailChanged,
+    phoneChanged,
     contentAdjusted,
   }, {
     request,
@@ -358,6 +413,8 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
         avatarPath: avatarPath || null,
         email: nextEmail,
         emailVerifiedAt,
+        phone: nextPhone,
+        phoneVerifiedAt,
         signature: nextSignature,
       },
     })
@@ -410,6 +467,8 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
         avatarPath: true,
         email: true,
         emailVerifiedAt: true,
+        phone: true,
+        phoneVerifiedAt: true,
         signature: true,
         points: true,
       },
@@ -444,6 +503,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
       avatarChanged,
       avatarRequiresPointCost,
       emailChanged,
+      phoneChanged,
       activityVisibility,
       introductionVisibility,
     },
@@ -467,6 +527,7 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     introductionChanged,
     avatarChanged,
     emailChanged,
+    phoneChanged,
     contentAdjusted,
     profile: updatedProfile,
   }, {

@@ -61,6 +61,7 @@ class MessageEventBus {
   private nextSubscriberId = 1
 
   private readonly subscribers = new Map<number, MessageEventSubscriber>()
+  private readonly subscriberIdsByUserId = new Map<number, Set<number>>()
 
   subscribe(userId: number, listener: MessageEventListener) {
     void ensureMessageEventBusRuntimeReady()
@@ -68,9 +69,16 @@ class MessageEventBus {
     const subscriberId = this.nextSubscriberId
     this.nextSubscriberId += 1
     this.subscribers.set(subscriberId, { userId, listener })
+    const userSubscriberIds = this.subscriberIdsByUserId.get(userId) ?? new Set<number>()
+    userSubscriberIds.add(subscriberId)
+    this.subscriberIdsByUserId.set(userId, userSubscriberIds)
 
     return () => {
       this.subscribers.delete(subscriberId)
+      userSubscriberIds.delete(subscriberId)
+      if (userSubscriberIds.size === 0) {
+        this.subscriberIdsByUserId.delete(userId)
+      }
     }
   }
 
@@ -99,15 +107,40 @@ class MessageEventBus {
       return
     }
 
-    for (const subscriber of this.subscribers.values()) {
-      if (targets !== "all" && !targets.has(subscriber.userId)) {
-        continue
-      }
-
+    const deliverToSubscriber = (subscriber: MessageEventSubscriber) => {
       try {
         subscriber.listener(event)
       } catch (error) {
         console.error("[message-event-bus] subscriber failed", error)
+      }
+    }
+
+    if (targets === "all") {
+      for (const subscriber of this.subscribers.values()) {
+        deliverToSubscriber(subscriber)
+      }
+      return
+    }
+
+    const deliveredSubscriberIds = new Set<number>()
+    for (const userId of targets) {
+      const subscriberIds = this.subscriberIdsByUserId.get(userId)
+      if (!subscriberIds) {
+        continue
+      }
+
+      for (const subscriberId of subscriberIds) {
+        if (deliveredSubscriberIds.has(subscriberId)) {
+          continue
+        }
+
+        const subscriber = this.subscribers.get(subscriberId)
+        if (!subscriber) {
+          continue
+        }
+
+        deliveredSubscriberIds.add(subscriberId)
+        deliverToSubscriber(subscriber)
       }
     }
   }

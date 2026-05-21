@@ -90,6 +90,18 @@ enum LotteryConditionOperator {
   EQ
 }
 
+enum LotteryPrizeType {
+  MANUAL
+  POINTS
+  VIP
+}
+
+enum LotteryVipPlan {
+  MONTH
+  QUARTER
+  YEAR
+}
+
 enum PostRedPacketGrantMode {
   FIXED
   RANDOM
@@ -1249,18 +1261,23 @@ model PollVote {
 }
 
 model LotteryPrize {
-  id          String          @id @default(cuid())
-  postId      String
-  title       String
-  description String
-  quantity    Int
-  sortOrder   Int             @default(0)
-  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime        @updatedAt @db.Timestamptz(3)
-  post        Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
-  winners     LotteryWinner[]
+  id             String          @id @default(cuid())
+  postId         String
+  title          String
+  description    String
+  quantity       Int
+  type           LotteryPrizeType @default(MANUAL)
+  pointsAmount   Int?
+  vipPlan        LotteryVipPlan?
+  unitCostPoints Int             @default(0)
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+  post           Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  winners        LotteryWinner[]
 
   @@index([postId, sortOrder])
+  @@index([postId, type])
 }
 
 model LotteryCondition {
@@ -1309,6 +1326,7 @@ model LotteryWinner {
   participantId String
   userId        Int
   drawnAt       DateTime           @default(now()) @db.Timestamptz(3)
+  deliveredAt   DateTime?          @db.Timestamptz(3)
   createdAt     DateTime           @default(now()) @db.Timestamptz(3)
   post          Post               @relation(fields: [postId], references: [id], onDelete: Cascade)
   prize         LotteryPrize       @relation(fields: [prizeId], references: [id], onDelete: Cascade)

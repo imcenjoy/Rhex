@@ -86,6 +86,7 @@ function isAdminCustomPageItem(value: unknown): value is AdminCustomPageItem {
     && typeof item.includeFooter === "boolean"
     && typeof item.includeLeftSidebar === "boolean"
     && typeof item.includeRightSidebar === "boolean"
+    && typeof item.isBuiltin === "boolean"
     && typeof item.createdAt === "string"
     && typeof item.createdAtText === "string"
     && isNullableString(item.publishedAt)
@@ -288,6 +289,7 @@ export function AdminCustomPageManager({ initialItems }: AdminCustomPageManagerP
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="truncate text-sm font-semibold">{item.title}</h4>
                         <StatusBadge status={item.status} />
+                        {item.isBuiltin ? <Badge variant="secondary">内置</Badge> : null}
                         <ChromeBadge enabled={item.includeHeader} icon={<PanelTop className="h-3 w-3" />} label="顶部" />
                         <ChromeBadge enabled={item.includeFooter} icon={<PanelBottom className="h-3 w-3" />} label="底部" />
                         <ChromeBadge enabled={item.includeLeftSidebar} icon={<PanelLeft className="h-3 w-3" />} label="左侧栏" />
@@ -317,8 +319,8 @@ export function AdminCustomPageManager({ initialItems }: AdminCustomPageManagerP
                       <Button type="button" variant="outline" className="h-8 rounded-full px-3 text-xs" onClick={() => setEditingId(activeEditing ? null : item.id)}>
                         {activeEditing ? "收起" : "编辑"}
                       </Button>
-                      <Button type="button" variant="ghost" className="h-8 rounded-full px-3 text-xs" disabled={isPending} onClick={() => submitDelete(item.id)}>
-                        <Trash2 className="mr-1 h-3.5 w-3.5" />删除
+                      <Button type="button" variant="ghost" className="h-8 rounded-full px-3 text-xs" disabled={isPending || item.isBuiltin} onClick={() => submitDelete(item.id)}>
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />{item.isBuiltin ? "内置页面" : "删除"}
                       </Button>
                     </div>
                   </div>
@@ -342,6 +344,7 @@ export function AdminCustomPageManager({ initialItems }: AdminCustomPageManagerP
                     <EditorForm
                       draft={draft}
                       isPending={isPending}
+                      routePathReadonly={item.isBuiltin}
                       onChange={(key, value) => updateEditingDraft(item.id, key, value)}
                       onSubmit={() => submitUpdate(item.id)}
                     />
@@ -382,17 +385,19 @@ export function AdminCustomPageManager({ initialItems }: AdminCustomPageManagerP
 function EditorForm({
   draft,
   isPending,
+  routePathReadonly = false,
   onChange,
   onSubmit,
 }: {
   draft: CustomPageDraft
   isPending: boolean
+  routePathReadonly?: boolean
   onChange: <K extends keyof CustomPageDraft>(key: K, value: CustomPageDraft[K]) => void
   onSubmit: () => void
 }) {
   return (
     <div className="mt-3 grid gap-3 rounded-[18px] border border-border bg-background/70 p-3">
-      <EditorFields draft={draft} onChange={onChange} />
+      <EditorFields draft={draft} routePathReadonly={routePathReadonly} onChange={onChange} />
       <div className="flex justify-end">
         <Button type="button" disabled={isPending} className="rounded-full" onClick={onSubmit}>
           {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}保存自定义页面
@@ -404,9 +409,11 @@ function EditorForm({
 
 function EditorFields({
   draft,
+  routePathReadonly = false,
   onChange,
 }: {
   draft: CustomPageDraft
+  routePathReadonly?: boolean
   onChange: <K extends keyof CustomPageDraft>(key: K, value: CustomPageDraft[K]) => void
 }) {
   const previewRoute = getCustomPageRoutePreview(draft.routePath)
@@ -432,7 +439,13 @@ function EditorFields({
       </div>
 
       <Field label="自定义路由">
-        <Input value={draft.routePath} onChange={(event) => onChange("routePath", event.target.value)} className="h-10 rounded-[16px] bg-background px-3" placeholder="如 /landing 或 /campaign/summer" />
+        <Input
+          value={draft.routePath}
+          onChange={(event) => onChange("routePath", event.target.value)}
+          className="h-10 rounded-[16px] bg-background px-3"
+          placeholder="如 /landing 或 /campaign/summer"
+          disabled={routePathReadonly}
+        />
       </Field>
 
       <div className="rounded-[16px] border border-dashed border-border bg-background px-3 py-3 text-xs leading-6 text-muted-foreground">

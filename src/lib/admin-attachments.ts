@@ -80,6 +80,9 @@ const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 100
 const CLEANUP_DEFAULT_LIMIT = 100
 const CLEANUP_MAX_LIMIT = 500
+const REFERENCE_SCAN_BATCH_SIZE = 50
+const REFERENCE_FILTER_SCAN_LIMIT = 1_000
+const CLEANUP_SCAN_LIMIT = 2_000
 
 const uploadListSelect = {
   id: true,
@@ -118,6 +121,7 @@ interface UploadReferenceState {
 interface UploadScanResult {
   total: number
   rows: UploadListRow[]
+  hasMore?: boolean
 }
 
 function normalizePage(value: unknown) {
@@ -184,6 +188,13 @@ function buildPagination(total: number, requestedPage: number, requestedPageSize
     hasPrevPage: page > 1,
     hasNextPage: page < totalPages,
   }
+}
+
+function buildUploadOrderBy() {
+  return [
+    { createdAt: "desc" as const },
+    { id: "desc" as const },
+  ]
 }
 
 function createReferenceStateMap(rows: UploadListRow[]) {
@@ -467,7 +478,7 @@ async function findUploadsMatchingReference(where: Prisma.UploadWhereInput, filt
     const pagination = buildPagination(total, options.page, options.pageSize)
     const rows = await prisma.upload.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: buildUploadOrderBy(),
       skip: (pagination.page - 1) * pagination.pageSize,
       take: pagination.pageSize,
       select: uploadListSelect,
@@ -477,16 +488,19 @@ async function findUploadsMatchingReference(where: Prisma.UploadWhereInput, filt
   }
 
   const matchingRows: UploadListRow[] = []
-  let total = 0
+  let matchedCount = 0
+  let scanned = 0
+  let hasMore = false
   let cursor: string | undefined
   const targetStart = (Math.max(1, options.page) - 1) * options.pageSize
+  const targetEnd = targetStart + options.pageSize
 
-  while (true) {
+  while (scanned < REFERENCE_FILTER_SCAN_LIMIT) {
     const batch = await prisma.upload.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: buildUploadOrderBy(),
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      take: 100,
+      take: Math.min(REFERENCE_SCAN_BATCH_SIZE, REFERENCE_FILTER_SCAN_LIMIT - scanned),
       select: uploadListSelect,
     })
 
@@ -494,6 +508,7 @@ async function findUploadsMatchingReference(where: Prisma.UploadWhereInput, filt
       break
     }
 
+    scanned += batch.length
     const states = await resolveUploadReferenceStates(batch)
     for (const row of batch) {
       const state = states.get(row.id)
@@ -504,16 +519,28 @@ async function findUploadsMatchingReference(where: Prisma.UploadWhereInput, filt
         continue
       }
 
-      if (total >= targetStart && matchingRows.length < options.pageSize) {
+      if (matchedCount >= targetStart && matchingRows.length < options.pageSize) {
         matchingRows.push(row)
       }
-      total += 1
+      matchedCount += 1
+
+      if (matchedCount > targetEnd) {
+        hasMore = true
+        break
+      }
     }
 
     cursor = batch[batch.length - 1]?.id
+    if (hasMore) {
+      break
+    }
   }
 
-  return { total, rows: matchingRows }
+  return {
+    total: hasMore ? targetEnd + 1 : matchedCount,
+    rows: matchingRows,
+    hasMore,
+  }
 }
 
 async function findOrphanUploads(where: Prisma.UploadWhereInput, limit: number) {
@@ -521,12 +548,12 @@ async function findOrphanUploads(where: Prisma.UploadWhereInput, limit: number) 
   let scanned = 0
   let cursor: string | undefined
 
-  while (rows.length < limit) {
+  while (rows.length < limit && scanned < CLEANUP_SCAN_LIMIT) {
     const batch = await prisma.upload.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: buildUploadOrderBy(),
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      take: 100,
+      take: Math.min(REFERENCE_SCAN_BATCH_SIZE, CLEANUP_SCAN_LIMIT - scanned),
       select: uploadListSelect,
     })
 
@@ -559,24 +586,24 @@ export async function getAdminAttachmentManagement(filters: AdminAttachmentFilte
   const referenceStatus = normalizeReferenceFilter(filters.referenceStatus)
   const page = normalizePage(filters.page)
   const pageSize = normalizePageSize(filters.pageSize)
-  const [bucketGroups, aggregate, allFilteredUploads, scanResult] = await Promise.all([
+  const [bucketGroups, total, aggregate, scanResult] = await Promise.all([
     prisma.upload.groupBy({
       by: ["bucketType"],
       _count: { _all: true },
       orderBy: { bucketType: "asc" },
     }),
+    prisma.upload.count({ where }),
     prisma.upload.aggregate({ where, _sum: { fileSize: true } }),
-    prisma.upload.findMany({ where, orderBy: { createdAt: "desc" }, select: uploadListSelect }),
     findUploadsMatchingReference(where, referenceStatus, { page, pageSize }),
   ])
 
-  const allStates = await resolveUploadReferenceStates(allFilteredUploads)
-  const referenced = allFilteredUploads.filter((row) => {
-    const state = allStates.get(row.id)
-    return state ? isReferenced(state) : false
-  }).length
   const rowStates = await resolveUploadReferenceStates(scanResult.rows)
   const pagination = buildPagination(scanResult.total, page, pageSize)
+  const referenced = scanResult.rows.filter((row) => {
+    const state = rowStates.get(row.id)
+    return state ? isReferenced(state) : false
+  }).length
+  const orphan = Math.max(0, scanResult.rows.length - referenced)
 
   return {
     filters: {
@@ -585,9 +612,9 @@ export async function getAdminAttachmentManagement(filters: AdminAttachmentFilte
       referenceStatus,
     },
     summary: {
-      total: allFilteredUploads.length,
+      total,
       referenced,
-      orphan: Math.max(0, allFilteredUploads.length - referenced),
+      orphan,
       totalBytes: aggregate._sum.fileSize ?? 0,
     },
     pagination,

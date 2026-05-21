@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { AlertCircle, Camera, CheckCircle2, LoaderCircle, Mail, PencilLine, UserRound } from "lucide-react"
+import { AlertCircle, Camera, CheckCircle2, LoaderCircle, Mail, PencilLine, Smartphone, UserRound } from "lucide-react"
 
 import { PasswordChangeForm } from "@/components/profile/password-change-form"
 import { Modal } from "@/components/ui/modal"
@@ -22,6 +22,8 @@ interface ProfileEditFormProps {
   initialAvatarPath?: string | null
   initialEmail?: string | null
   initialEmailVerified: boolean
+  initialPhone?: string | null
+  initialPhoneVerified: boolean
   passwordChangeRequireEmailVerification?: boolean
   emailDeliveryEnabled?: boolean
   initialActivityVisibility: UserProfileVisibility
@@ -40,12 +42,13 @@ interface ProfileEditFormProps {
   availableSections?: ProfileSectionKey[]
 }
 
-type ProfileSectionKey = "basic" | "avatar" | "email" | "password" | "privacy"
+type ProfileSectionKey = "basic" | "avatar" | "email" | "phone" | "password" | "privacy"
 
 const profileSectionLabels: Record<ProfileSectionKey, string> = {
   basic: "基础资料",
   avatar: "头像",
   email: "邮箱",
+  phone: "手机",
   password: "密码",
   privacy: "隐私",
 }
@@ -107,6 +110,8 @@ export function ProfileEditForm({
   initialAvatarPath,
   initialEmail,
   initialEmailVerified,
+  initialPhone,
+  initialPhoneVerified,
   passwordChangeRequireEmailVerification = false,
   emailDeliveryEnabled = false,
   initialActivityVisibility,
@@ -146,14 +151,19 @@ export function ProfileEditForm({
   const [email, setEmail] = useState(initialEmail ?? "")
   const [emailCode, setEmailCode] = useState("")
   const [emailVerified, setEmailVerified] = useState(initialEmailVerified)
+  const [phone, setPhone] = useState(initialPhone ?? "")
+  const [phoneCode, setPhoneCode] = useState("")
+  const [phoneVerified, setPhoneVerified] = useState(initialPhoneVerified)
   const [activityVisibility, setActivityVisibility] = useState(initialActivityVisibility)
   const [introductionVisibility, setIntroductionVisibility] = useState(initialIntroductionVisibility)
   const [profileLoading, setProfileLoading] = useState(false)
   const [avatarSaving, setAvatarSaving] = useState(false)
   const [emailSaving, setEmailSaving] = useState(false)
+  const [phoneSaving, setPhoneSaving] = useState(false)
   const [privacySavingKey, setPrivacySavingKey] = useState<"activity" | "introduction" | null>(null)
   const [uploading, setUploading] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
+  const [sendingPhoneCode, setSendingPhoneCode] = useState(false)
   const [showNicknameModal, setShowNicknameModal] = useState(false)
   const [showIntroductionModal, setShowIntroductionModal] = useState(false)
   const [pendingNickname, setPendingNickname] = useState(initialNickname)
@@ -299,6 +309,8 @@ export function ProfileEditForm({
     avatarPath?: string
     email?: string
     emailCode?: string
+    phone?: string
+    phoneCode?: string
     activityVisibility?: UserProfileVisibility
     introductionVisibility?: UserProfileVisibility
   }) {
@@ -315,6 +327,8 @@ export function ProfileEditForm({
         avatarPath: payload.avatarPath ?? savedAvatarPath,
         email: payload.email ?? email,
         emailCode: payload.emailCode ?? "",
+        phone: payload.phone ?? phone,
+        phoneCode: payload.phoneCode ?? "",
         activityVisibility: payload.activityVisibility ?? activityVisibility,
         introductionVisibility: payload.introductionVisibility ?? introductionVisibility,
       }),
@@ -500,6 +514,55 @@ export function ProfileEditForm({
       toast.error(error instanceof Error ? error.message : "保存失败", "邮箱保存失败")
     } finally {
       setEmailSaving(false)
+    }
+  }
+
+  async function handleSendPhoneCode() {
+    if (!phone) {
+      toast.warning("请先填写手机号", "手机验证")
+      return
+    }
+
+    setSendingPhoneCode(true)
+
+    try {
+      const response = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ channel: "PHONE", target: phone }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message ?? "验证码发送失败")
+      }
+
+      toast.success(result.message ?? "验证码已发送", "手机验证")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "验证码发送失败", "手机验证")
+    } finally {
+      setSendingPhoneCode(false)
+    }
+  }
+
+  async function handlePhoneSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setPhoneSaving(true)
+
+    try {
+      const result = await updateProfile({ phone, phoneCode })
+      if (result.data?.phoneVerifiedAt) {
+        setPhoneVerified(true)
+      }
+      setPhoneCode("")
+      toast.success(result.message ?? "手机号已更新", "手机保存成功")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "保存失败", "手机保存失败")
+    } finally {
+      setPhoneSaving(false)
     }
   }
 
@@ -689,6 +752,38 @@ export function ProfileEditForm({
           ) : null}
 
           <Button disabled={emailSaving}>{emailSaving ? "保存中..." : emailVerified ? "邮箱已验证" : "保存并验证邮箱"}</Button>
+        </form>
+      ) : null}
+
+      {activeSection === "phone" ? (
+        <form onSubmit={handlePhoneSubmit} className="space-y-5 rounded-xl bg-card p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-foreground">
+              <Smartphone className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">手机号</p>
+              <p className="mt-1 text-xs text-muted-foreground">手机验证后将锁定不可再修改，可用于短信登录和找回密码。</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">手机号</p>
+            <input value={phone} onChange={(event) => setPhone(event.target.value)} className="h-11 w-full rounded-full border border-border bg-background px-4 text-sm outline-hidden" disabled={phoneVerified} placeholder="填写 11 位手机号" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {!phoneVerified ? <Button type="button" variant="outline" onClick={handleSendPhoneCode} disabled={sendingPhoneCode || !phone}>{sendingPhoneCode ? "发送中..." : "发送短信验证码"}</Button> : null}
+          </div>
+
+          {!phoneVerified ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">短信验证码</p>
+              <input value={phoneCode} onChange={(event) => setPhoneCode(event.target.value)} className="h-11 w-full rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="输入收到的 6 位验证码" />
+            </div>
+          ) : null}
+
+          <Button disabled={phoneSaving}>{phoneSaving ? "保存中..." : phoneVerified ? "手机已验证" : "保存并验证手机"}</Button>
         </form>
       ) : null}
 

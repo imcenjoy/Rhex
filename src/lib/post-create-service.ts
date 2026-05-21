@@ -23,6 +23,10 @@ import { extractSummaryFromContent } from "@/lib/content"
 import { enforceSensitiveText } from "@/lib/content-safety"
 import { getBusinessDayRange, parseBusinessDateTime } from "@/lib/formatters"
 import { determineLotteryTriggerMode, normalizeLotteryConfig } from "@/lib/lottery"
+import {
+  buildLotteryPrizeCreateInputs,
+  calculateLotteryAutoPrizeTotalCost,
+} from "@/lib/lottery-prizes"
 import { enforceInteractionGate } from "@/lib/interaction-gates"
 import { createPostMentionNotifications, stripPostContentUserLinks } from "@/lib/post-mentions"
 import { createPostAuctionRecord, enqueuePostAuctionSettlement, normalizePostAuctionConfig } from "@/lib/post-auctions"
@@ -276,8 +280,25 @@ export async function createPostFlow(body: unknown, options: CreatePostFlowOptio
         userId: author.id,
       })
     : null
+  const lotteryAutoPrizeTotalCost = postType === "LOTTERY" && normalizedLottery?.data
+    ? calculateLotteryAutoPrizeTotalCost(normalizedLottery.data.prizes, settings)
+    : 0
+
+  if (lotteryAutoPrizeTotalCost === null) {
+    apiError(400, "抽奖自动奖品成本计算失败，请检查奖项配置")
+  }
+
+  const normalizedLotteryAutoPrizeTotalCost = lotteryAutoPrizeTotalCost ?? 0
+  const preparedLotteryPrizeDelta = normalizedLotteryAutoPrizeTotalCost > 0
+    ? await prepareScopedPointDelta({
+        scopeKey: "LOTTERY_PRIZE_SPONSOR_COST",
+        baseDelta: -normalizedLotteryAutoPrizeTotalCost,
+        userId: author.id,
+      })
+    : null
   const totalRequiredPointCost = Math.max(0, -preparedPostDelta.finalDelta)
     + Math.max(0, -(preparedBountyDelta?.finalDelta ?? 0))
+    + Math.max(0, -(preparedLotteryPrizeDelta?.finalDelta ?? 0))
     + (isAnonymous ? settings.anonymousPostPrice : 0)
     + redPacketTotalPoints
 
@@ -343,7 +364,7 @@ export async function createPostFlow(body: unknown, options: CreatePostFlowOptio
           publishedAt: shouldPending ? null : new Date(),
           reviewNote: shouldPending ? "当前节点开启发帖审核，帖子已进入审核" : null,
           pollOptions: postType === "POLL" ? { create: pollOptions.map((option, index) => ({ content: option, sortOrder: index })) } : undefined,
-          lotteryPrizes: postType === "LOTTERY" ? { create: (lotteryData?.prizes ?? []).map((prize, index) => ({ title: prize.title, description: prize.description, quantity: prize.quantity, sortOrder: index })) } : undefined,
+          lotteryPrizes: postType === "LOTTERY" ? { create: buildLotteryPrizeCreateInputs(lotteryData?.prizes ?? [], settings) } : undefined,
           lotteryConditions: postType === "LOTTERY" ? { create: (lotteryData?.conditions ?? []).map((condition, index) => ({ type: condition.type, operator: condition.operator ?? "GTE", value: condition.value, description: condition.description, groupKey: condition.groupKey ?? "default", sortOrder: index })) } : undefined,
         }
 
@@ -407,6 +428,26 @@ export async function createPostFlow(body: unknown, options: CreatePostFlowOptio
             relatedId: createdPost.id,
           })
           authorPointBalanceCursor = bountyResult.afterBalance
+        }
+
+        if (preparedLotteryPrizeDelta) {
+          const lotteryPrizeResult = await applyPointDelta({
+            tx,
+            userId: author.id,
+            beforeBalance: authorPointBalanceCursor,
+            prepared: preparedLotteryPrizeDelta,
+            pointName: settings.pointName,
+            reason: "发布抽奖帖预扣自动奖品成本",
+            eventType: POINT_LOG_EVENT_TYPES.LOTTERY_PRIZE_SPONSOR_COST,
+            eventData: {
+              postId: createdPost.id,
+              reservedCost: normalizedLotteryAutoPrizeTotalCost,
+              prizeCount: lotteryData?.prizes.length ?? 0,
+            },
+            relatedType: "POST",
+            relatedId: createdPost.id,
+          })
+          authorPointBalanceCursor = lotteryPrizeResult.afterBalance
         }
 
         if (isAnonymous && settings.anonymousPostPrice > 0) {

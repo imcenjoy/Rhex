@@ -69,18 +69,19 @@ export function normalizeHexColor(value: unknown, fallback: string) {
   return /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(normalized) ? normalized : fallback
 }
 
-export type LeftSidebarDisplayMode = "DEFAULT" | "HIDDEN" | "DOCKED"
+export type LeftSidebarDisplayMode = "DEFAULT" | "HIDDEN" | "DOCKED" | "DOCKED_OPEN"
 
 export function normalizeLeftSidebarDisplayMode(
   value: unknown,
   fallback: LeftSidebarDisplayMode = "DEFAULT",
 ): LeftSidebarDisplayMode {
-  const normalized = typeof value === "string" ? value.trim().toUpperCase() : ""
+  const normalized = typeof value === "string" ? value.trim().toUpperCase().replace(/-/g, "_") : ""
 
   switch (normalized) {
     case "DEFAULT":
     case "HIDDEN":
     case "DOCKED":
+    case "DOCKED_OPEN":
       return normalized
     default:
       return fallback
@@ -269,6 +270,15 @@ export interface AuthProviderSettings {
   githubEnabled: boolean
   googleEnabled: boolean
   passkeyEnabled: boolean
+}
+
+export interface SmsProviderSettings {
+  enabled: boolean
+  aliyunEndpoint: string
+  aliyunRegionId: string
+  aliyunSignName: string
+  aliyunTemplateCode: string
+  aliyunCodeParamName: string
 }
 
 export interface AuthPageShowcaseSettings {

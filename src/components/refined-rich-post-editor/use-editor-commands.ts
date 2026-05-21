@@ -242,7 +242,6 @@ export function useEditorCommands({
       selectionStart: start,
       selectionEnd: end,
     }, () => base64Preview))
-    setMessage("已插入 Base64 编码内容")
     closeBase64Dialog()
   }, [applyEditorUpdate, base64Preview, closeBase64Dialog, selectionRef, setMessage, value])
 

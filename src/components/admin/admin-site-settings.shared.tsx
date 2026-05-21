@@ -133,6 +133,14 @@ export interface AdminBasicSettingsInitialSettings {
   passkeyRpId?: string | null
   passkeyRpName?: string | null
   passkeyOrigin?: string | null
+  smsEnabled: boolean
+  smsAliyunAccessKeyId?: string | null
+  smsAliyunAccessKeySecret?: string | null
+  smsAliyunEndpoint: string
+  smsAliyunRegionId: string
+  smsAliyunSignName: string
+  smsAliyunTemplateCode: string
+  smsAliyunCodeParamName: string
   smtpEnabled: boolean
   smtpHost?: string | null
   smtpPort?: number | null
@@ -288,6 +296,14 @@ export interface AdminBasicSettingsDraft {
   passkeyRpId: string
   passkeyRpName: string
   passkeyOrigin: string
+  smsEnabled: boolean
+  smsAliyunAccessKeyId: string
+  smsAliyunAccessKeySecret: string
+  smsAliyunEndpoint: string
+  smsAliyunRegionId: string
+  smsAliyunSignName: string
+  smsAliyunTemplateCode: string
+  smsAliyunCodeParamName: string
   smtpEnabled: boolean
   smtpHost: string
   smtpPort: string
@@ -513,6 +529,14 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     passkeyRpId: initialSettings.passkeyRpId ?? "",
     passkeyRpName: initialSettings.passkeyRpName ?? "",
     passkeyOrigin: initialSettings.passkeyOrigin ?? "",
+    smsEnabled: coerceBoolean(initialSettings.smsEnabled, false),
+    smsAliyunAccessKeyId: initialSettings.smsAliyunAccessKeyId ?? "",
+    smsAliyunAccessKeySecret: initialSettings.smsAliyunAccessKeySecret ?? "",
+    smsAliyunEndpoint: initialSettings.smsAliyunEndpoint || "dysmsapi.aliyuncs.com",
+    smsAliyunRegionId: initialSettings.smsAliyunRegionId || "cn-hangzhou",
+    smsAliyunSignName: initialSettings.smsAliyunSignName ?? "",
+    smsAliyunTemplateCode: initialSettings.smsAliyunTemplateCode ?? "",
+    smsAliyunCodeParamName: initialSettings.smsAliyunCodeParamName || "code",
     smtpEnabled: coerceBoolean(initialSettings.smtpEnabled, false),
     smtpHost: initialSettings.smtpHost ?? "",
     smtpPort: initialSettings.smtpPort ? String(initialSettings.smtpPort) : "",
@@ -626,6 +650,14 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       passkeyRpId: draft.passkeyRpId,
       passkeyRpName: draft.passkeyRpName,
       passkeyOrigin: draft.passkeyOrigin,
+      smsEnabled: draft.smsEnabled,
+      smsAliyunAccessKeyId: draft.smsAliyunAccessKeyId,
+      smsAliyunAccessKeySecret: draft.smsAliyunAccessKeySecret,
+      smsAliyunEndpoint: draft.smsAliyunEndpoint,
+      smsAliyunRegionId: draft.smsAliyunRegionId,
+      smsAliyunSignName: draft.smsAliyunSignName,
+      smsAliyunTemplateCode: draft.smsAliyunTemplateCode,
+      smsAliyunCodeParamName: draft.smsAliyunCodeParamName,
       smtpEnabled: draft.smtpEnabled,
       smtpHost: draft.smtpHost,
       smtpPort: Number(draft.smtpPort),

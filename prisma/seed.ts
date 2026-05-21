@@ -1,12 +1,15 @@
 import {
   BadgeRuleOperator,
   BadgeRuleType,
+  AnnouncementStatus,
   BoardStatus,
   PrismaClient,
   UserRole,
   UserStatus,
 } from "@prisma/client"
 import { hashSync } from "bcryptjs"
+
+import { getBuiltinCustomPageSeeds } from "../src/lib/builtin-custom-pages"
 
 const prisma = new PrismaClient()
 
@@ -409,15 +412,44 @@ async function ensureAdminUser() {
   })
 }
 
+async function ensureBuiltinCustomPages(
+  adminId: number,
+  settings: {
+    siteName: string
+    siteDescription: string
+    pointName: string
+  },
+) {
+  for (const seed of getBuiltinCustomPageSeeds(settings)) {
+    await prisma.customPage.upsert({
+      where: { routePath: seed.routePath },
+      update: {},
+      create: {
+        title: seed.title,
+        routePath: seed.routePath,
+        htmlContent: seed.htmlContent,
+        status: AnnouncementStatus.PUBLISHED,
+        includeHeader: seed.includeHeader,
+        includeFooter: seed.includeFooter,
+        includeLeftSidebar: seed.includeLeftSidebar,
+        includeRightSidebar: seed.includeRightSidebar,
+        publishedAt: new Date(),
+        createdBy: adminId,
+      },
+    })
+  }
+}
+
 
 
 
 async function main() {
-  await ensureSiteSettings()
+  const siteSettings = await ensureSiteSettings()
   await ensureLevelDefinitions()
   await ensureDefaultBadges()
   await ensureBaseTaxonomy()
-  await ensureAdminUser()
+  const admin = await ensureAdminUser()
+  await ensureBuiltinCustomPages(admin.id, siteSettings)
 
   console.log(`Seed completed for forum v${APP_VERSION}.`)
   console.log(`Admin username: ${DEFAULT_ADMIN_USERNAME}`)

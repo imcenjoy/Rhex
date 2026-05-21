@@ -3,6 +3,14 @@
 import { LotteryConditionValueField } from "@/components/post/lottery-condition-value-field"
 import { Button } from "@/components/ui/rbutton"
 import type { AccessThresholdOption } from "@/lib/access-threshold-options"
+import { formatNumber } from "@/lib/formatters"
+import {
+  LOTTERY_PRIZE_TYPE_OPTIONS,
+  LOTTERY_VIP_PLAN_OPTIONS,
+  getLotteryVipPlanDetails,
+  normalizeLotteryPrizeType,
+  normalizeLotteryVipPlan,
+} from "@/lib/lottery-prizes"
 import type {
   LotteryConditionDraft,
   LotteryPrizeDraft,
@@ -31,8 +39,39 @@ function groupLotteryConditions(lotteryConditions: LotteryConditionDraft[]) {
   return Array.from(groups.entries()).map(([groupKey, items]) => ({ groupKey, items }))
 }
 
+function calculateLotteryPrizeCost(
+  prize: LotteryPrizeDraft,
+  prices: { vipMonthlyPrice: number; vipQuarterlyPrice: number; vipYearlyPrice: number },
+) {
+  const quantity = Math.max(0, Math.trunc(Number(prize.quantity) || 0))
+  if (quantity <= 0) {
+    return 0
+  }
+
+  const type = normalizeLotteryPrizeType(prize.type)
+  if (type === "POINTS") {
+    return Math.max(0, Math.trunc(Number(prize.pointsAmount) || 0)) * quantity
+  }
+
+  if (type === "VIP") {
+    return getLotteryVipPlanDetails(prize.vipPlan, prices).pointsCost * quantity
+  }
+
+  return 0
+}
+
+function calculateLotteryAutoPrizeCost(
+  prizes: LotteryPrizeDraft[],
+  prices: { vipMonthlyPrice: number; vipQuarterlyPrice: number; vipYearlyPrice: number },
+) {
+  return prizes.reduce((total, prize) => total + calculateLotteryPrizeCost(prize, prices), 0)
+}
+
 export function LotterySettingsSection({
   pointName,
+  vipMonthlyPrice,
+  vipQuarterlyPrice,
+  vipYearlyPrice,
   lotteryStartsAt,
   lotteryEndsAt,
   lotteryParticipantGoal,
@@ -54,6 +93,9 @@ export function LotterySettingsSection({
   disabled,
 }: {
   pointName: string
+  vipMonthlyPrice: number
+  vipQuarterlyPrice: number
+  vipYearlyPrice: number
   lotteryStartsAt: string
   lotteryEndsAt: string
   lotteryParticipantGoal: string
@@ -90,6 +132,11 @@ export function LotterySettingsSection({
   const hasManualDrawTime = lotteryEndsAt.trim().length > 0
   const hasAutoParticipantGoal =
     !hasManualDrawTime && lotteryParticipantGoal.trim().length > 0
+  const autoPrizeCost = calculateLotteryAutoPrizeCost(lotteryPrizes, {
+    vipMonthlyPrice,
+    vipQuarterlyPrice,
+    vipYearlyPrice,
+  })
 
   function handleLotteryEndsAtChange(value: string) {
     onLotteryEndsAtChange(value)
@@ -159,21 +206,69 @@ export function LotterySettingsSection({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium">奖项配置</p>
-            <p className="mt-1 text-xs text-muted-foreground">至少保留 1 个奖项，可继续新增。</p>
+            <p className="mt-1 text-xs text-muted-foreground">至少保留 1 个奖项。积分与会员奖品会在发布时从发起人账户预扣，开奖后自动发放。</p>
           </div>
           <Button type="button" variant="outline" onClick={onAddLotteryPrize} disabled={disabled || lotteryPrizes.length >= 20}>新增奖项</Button>
         </div>
+        {autoPrizeCost > 0 ? (
+          <div className="rounded-[18px] border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+            自动奖品预计预扣 <span className="font-medium text-foreground">{formatNumber(autoPrizeCost)} {pointName}</span>。开奖时未实际发出的自动奖品份额会退回发起人账户。
+          </div>
+        ) : null}
         <div className="space-y-3">
-          {lotteryPrizes.map((prize, index) => (
-            <div key={`lottery-prize-${index}`} className="space-y-3 rounded-[18px] border border-border bg-card p-4">
-              <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-                <input value={prize.title} onChange={(event) => onLotteryPrizeChange(index, "title", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="奖项名称，如 一等奖" disabled={disabled} />
-                <input value={prize.quantity} onChange={(event) => onLotteryPrizeChange(index, "quantity", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="数量" disabled={disabled} />
-                <Button type="button" variant="ghost" onClick={() => onRemoveLotteryPrize(index)} disabled={disabled || lotteryPrizes.length <= 1}>删除</Button>
+          {lotteryPrizes.map((prize, index) => {
+            const prizeType = normalizeLotteryPrizeType(prize.type)
+            const vipPlan = normalizeLotteryVipPlan(prize.vipPlan)
+            const prizeCost = calculateLotteryPrizeCost(prize, {
+              vipMonthlyPrice,
+              vipQuarterlyPrice,
+              vipYearlyPrice,
+            })
+
+            return (
+              <div key={`lottery-prize-${index}`} className="space-y-3 rounded-[18px] border border-border bg-card p-4">
+                <div className="grid gap-3 md:grid-cols-[160px_minmax(0,1fr)_140px_auto]">
+                  <select value={prizeType} onChange={(event) => onLotteryPrizeChange(index, "type", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" disabled={disabled}>
+                    {LOTTERY_PRIZE_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <input value={prize.title} onChange={(event) => onLotteryPrizeChange(index, "title", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="奖项名称，如 一等奖" disabled={disabled} />
+                  <input value={prize.quantity} onChange={(event) => onLotteryPrizeChange(index, "quantity", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="数量" disabled={disabled} />
+                  <Button type="button" variant="ghost" onClick={() => onRemoveLotteryPrize(index)} disabled={disabled || lotteryPrizes.length <= 1}>删除</Button>
+                </div>
+
+                {prizeType === "POINTS" ? (
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                    <input value={prize.pointsAmount} onChange={(event) => onLotteryPrizeChange(index, "pointsAmount", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder={`每名中奖者获得的${pointName}，如 100`} disabled={disabled} />
+                    <span className="text-xs text-muted-foreground">本奖项预扣 {formatNumber(prizeCost)} {pointName}</span>
+                  </div>
+                ) : null}
+
+                {prizeType === "VIP" ? (
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                    <select value={vipPlan} onChange={(event) => onLotteryPrizeChange(index, "vipPlan", event.target.value)} className="h-11 rounded-full border border-border bg-background px-4 text-sm outline-hidden" disabled={disabled}>
+                      {LOTTERY_VIP_PLAN_OPTIONS.map((option) => {
+                        const detail = getLotteryVipPlanDetails(option.value, {
+                          vipMonthlyPrice,
+                          vipQuarterlyPrice,
+                          vipYearlyPrice,
+                        })
+                        return (
+                          <option key={option.value} value={option.value}>
+                            {option.label} · {formatNumber(detail.pointsCost)} {pointName}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <span className="text-xs text-muted-foreground">本奖项预扣 {formatNumber(prizeCost)} {pointName}</span>
+                  </div>
+                ) : null}
+
+                <input value={prize.description} onChange={(event) => onLotteryPrizeChange(index, "description", event.target.value)} className="h-11 w-full rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder={prizeType === "MANUAL" ? "奖品描述，如 周边、兑换码" : "发放说明，可留空使用默认文案"} disabled={disabled} />
               </div>
-              <input value={prize.description} onChange={(event) => onLotteryPrizeChange(index, "description", event.target.value)} className="h-11 w-full rounded-full border border-border bg-background px-4 text-sm outline-hidden" placeholder="奖品描述，如 周边、积分、兑换码" disabled={disabled} />
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

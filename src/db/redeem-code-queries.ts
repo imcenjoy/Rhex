@@ -76,6 +76,22 @@ export async function listRedeemCodes(limit = 100) {
   })
 }
 
+export async function deleteRedeemCodeById(id: string) {
+  return prisma.redeemCode.deleteMany({
+    where: { id },
+  })
+}
+
+export async function deleteRedeemCodesByScope(scope: "all" | "used" | "unused") {
+  return prisma.redeemCode.deleteMany({
+    where: scope === "all"
+      ? {}
+      : {
+          redeemedAt: scope === "used" ? { not: null } : null,
+        },
+  })
+}
+
 export interface RedeemCodeCoreRow {
   id: string
   code: string

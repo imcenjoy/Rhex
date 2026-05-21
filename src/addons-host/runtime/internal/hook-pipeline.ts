@@ -23,6 +23,61 @@ import type { LoadedAddonRuntime } from "@/addons-host/types"
 
 export type AddonHookKind = "action" | "waterfall" | "asyncWaterfall"
 
+const DEFAULT_HOOK_TIMEOUT_MS = 2_000
+const MIN_HOOK_TIMEOUT_MS = 100
+const MAX_HOOK_TIMEOUT_MS = 30_000
+
+class AddonHookTimeoutError extends Error {
+  constructor(input: {
+    kind: AddonHookKind
+    hook: string
+    key: string
+    timeoutMs: number
+  }) {
+    super(`addon hook "${input.hook}" (${input.kind}:${input.key}) timed out after ${input.timeoutMs}ms`)
+    this.name = "AddonHookTimeoutError"
+  }
+}
+
+function getAddonHookTimeoutMs() {
+  const rawValue = Number.parseInt(process.env.ADDON_HOOK_TIMEOUT_MS?.trim() ?? "", 10)
+  if (!Number.isFinite(rawValue) || rawValue <= 0) {
+    return DEFAULT_HOOK_TIMEOUT_MS
+  }
+
+  return Math.min(MAX_HOOK_TIMEOUT_MS, Math.max(MIN_HOOK_TIMEOUT_MS, rawValue))
+}
+
+async function runWithHookTimeout<T>(
+  task: Promise<T>,
+  input: {
+    kind: AddonHookKind
+    hook: string
+    key: string
+  },
+) {
+  const timeoutMs = getAddonHookTimeoutMs()
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  try {
+    return await Promise.race([
+      task,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new AddonHookTimeoutError({
+            ...input,
+            timeoutMs,
+          }))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) {
+      clearTimeout(timer)
+    }
+  }
+}
+
 /** 记录单次 hook 执行失败到 addon lifecycle 日志（DB）。 */
 export async function logHookFailure(input: {
   addon: LoadedAddonRuntime
@@ -72,7 +127,11 @@ export async function runHookPipeline<TCandidate>(
 
   for (const candidate of options.candidates) {
     try {
-      await options.run(candidate)
+      await runWithHookTimeout(options.run(candidate), {
+        kind: options.kind,
+        hook: options.hook,
+        key: options.getKey(candidate),
+      })
     } catch (error) {
       await logHookFailure({
         addon: options.getAddon(candidate),

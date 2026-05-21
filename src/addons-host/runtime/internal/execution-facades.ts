@@ -27,6 +27,7 @@ import {
 import { followAddonUser } from "@/addons-host/runtime/follows"
 import { sendAddonMessage } from "@/addons-host/runtime/messages"
 import { sendAddonEmail } from "@/addons-host/runtime/emails"
+import { sendAddonSms } from "@/addons-host/runtime/sms"
 import {
   createAddonNotification,
   createAddonNotifications,
@@ -50,7 +51,7 @@ import type {
 
 export type AddonDomainFacades = Pick<
   AddonExecutionContextBase,
-  "posts" | "comments" | "messages" | "notifications" | "emails" | "follows" | "points" | "badges" | "data"
+  "posts" | "comments" | "messages" | "notifications" | "emails" | "sms" | "follows" | "points" | "badges" | "data"
 >
 
 interface DomainFacadeBuildInput {
@@ -118,6 +119,12 @@ export function buildAddonDomainFacades(
       send: async (emailInput) => {
         assertRuntimePermission("email:send", `addon "${addonId}" is not allowed to send emails`)
         return sendAddonEmail(emailInput)
+      },
+    },
+    sms: {
+      send: async (smsInput) => {
+        assertRuntimePermission("sms:send", `addon "${addonId}" is not allowed to send SMS messages`)
+        return sendAddonSms(smsInput)
       },
     },
     follows: {

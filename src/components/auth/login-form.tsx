@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import type { ReactNode } from "react"
 import { useState } from "react"
-import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Smartphone, UserRound } from "lucide-react"
 
 import { AuthField, AuthFormSection, AuthInlineMessage } from "@/components/auth/auth-form-primitives"
 import { BuiltinCaptchaField } from "@/components/auth/builtin-captcha-field"
@@ -41,14 +41,17 @@ export function LoginForm({
 }: LoginFormProps) {
   const router = useRouter()
   const { refresh: refreshCurrentUser } = useCurrentUser()
+  const [loginMode, setLoginMode] = useState<"password" | "phone-code">("password")
   const [login, setLogin] = useState("")
   const [password, setPassword] = useState("")
+  const [phoneCode, setPhoneCode] = useState("")
   const [captchaToken, setCaptchaToken] = useState("")
   const [builtinCaptchaCode, setBuiltinCaptchaCode] = useState("")
   const [powNonce, setPowNonce] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [sendingPhoneCode, setSendingPhoneCode] = useState(false)
 
   const captchaMode = settings.loginCaptchaMode
   const useTurnstile = captchaMode === "TURNSTILE" && Boolean(settings.turnstileSiteKey)
@@ -56,6 +59,41 @@ export function LoginForm({
   const usePowCaptcha = captchaMode === "POW"
   const hasAlternativeAuth = settings.authGithubEnabled || settings.authGoogleEnabled || settings.authPasskeyEnabled || addonExternalAuthEntries.length > 0
   const hasCaptchaSection = useTurnstile || useBuiltinCaptcha || usePowCaptcha || Boolean(addonCaptcha)
+
+  async function handleSendPhoneCode() {
+    if (!login.trim()) {
+      setMessage("请先输入手机号")
+      return
+    }
+
+    setSendingPhoneCode(true)
+    setMessage("")
+
+    try {
+      const response = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channel: "PHONE",
+          target: login,
+          purpose: "login",
+        }),
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message ?? "短信验证码发送失败")
+      }
+
+      setMessage(result.message ?? "验证码已发送到手机")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "短信验证码发送失败")
+    } finally {
+      setSendingPhoneCode(false)
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -90,7 +128,9 @@ export function LoginForm({
       },
       body: JSON.stringify({
         login,
-        password,
+        password: loginMode === "password" ? password : undefined,
+        loginMode,
+        phoneCode: loginMode === "phone-code" ? phoneCode : undefined,
         captchaToken,
         builtinCaptchaCode,
         powNonce,
@@ -124,10 +164,15 @@ export function LoginForm({
       ) : null}
 
       <AuthFormSection>
-        <AuthField htmlFor="login-identity" label="邮箱 / 用户名" required>
+        <div className="flex gap-2">
+          <Button type="button" variant={loginMode === "password" ? "default" : "outline"} onClick={() => setLoginMode("password")}>密码登录</Button>
+          <Button type="button" variant={loginMode === "phone-code" ? "default" : "outline"} onClick={() => setLoginMode("phone-code")}>短信登录</Button>
+        </div>
+
+        <AuthField htmlFor="login-identity" label={loginMode === "password" ? "邮箱 / 用户名 / 手机号" : "手机号"} required>
           <InputGroup className="h-11 rounded-2xl bg-background/80">
             <InputGroupAddon>
-              <UserRound />
+              {loginMode === "password" ? <UserRound /> : <Smartphone />}
             </InputGroupAddon>
             <InputGroupInput
               id="login-identity"
@@ -135,35 +180,64 @@ export function LoginForm({
               autoComplete="username"
               value={login}
               onChange={(event) => setLogin(event.target.value)}
-              placeholder="输入邮箱或用户名"
+              placeholder={loginMode === "password" ? "输入邮箱、用户名或手机号" : "输入已绑定手机号"}
             />
           </InputGroup>
         </AuthField>
 
-        <AuthField htmlFor="login-password" label="密码" required>
-          <InputGroup className="h-11 rounded-2xl bg-background/80">
-            <InputGroupAddon>
-              <LockKeyhole />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="login-password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="输入密码"
-            />
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                onClick={() => setShowPassword((current) => !current)}
-              >
-                {showPassword ? <EyeOff /> : <Eye />}
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        </AuthField>
+        {loginMode === "password" ? (
+          <AuthField htmlFor="login-password" label="密码" required>
+            <InputGroup className="h-11 rounded-2xl bg-background/80">
+              <InputGroupAddon>
+                <LockKeyhole />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="login-password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="输入密码"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  type="button"
+                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </AuthField>
+        ) : (
+          <AuthField htmlFor="login-phone-code" label="短信验证码" required>
+            <InputGroup className="h-11 rounded-2xl bg-background/80">
+              <InputGroupAddon>
+                <ShieldCheck />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="login-phone-code"
+                name="phoneCode"
+                value={phoneCode}
+                onChange={(event) => setPhoneCode(event.target.value)}
+                placeholder="输入 6 位验证码"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleSendPhoneCode()}
+                  disabled={sendingPhoneCode || !login}
+                >
+                  {sendingPhoneCode ? <Spinner data-icon="inline-start" /> : null}
+                  {sendingPhoneCode ? "发送中" : "发送验证码"}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </AuthField>
+        )}
       </AuthFormSection>
 
       {hasCaptchaSection ? (
@@ -199,7 +273,7 @@ export function LoginForm({
       ) : null}
 
       {message ? (
-        <AuthInlineMessage tone={message.includes("成功") ? "success" : "destructive"}>
+        <AuthInlineMessage tone={message.includes("成功") || message.includes("已发送") ? "success" : "destructive"}>
           {message}
         </AuthInlineMessage>
       ) : null}

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 
 import { prisma } from "@/db/client"
 import { findUserLoginCandidate } from "@/db/external-auth-user-queries"
+import { findUserByPhone } from "@/db/password-reset-queries"
 import { readAddonAuthFieldsFromBody } from "@/lib/addon-auth-fields"
 import { validateLoginWithAddonProviders } from "@/lib/addon-auth-providers"
 import { apiError, createRouteHandler, apiSuccess, readJsonBody, readOptionalStringField } from "@/lib/api-route"
@@ -14,15 +15,27 @@ import { getRequestIp } from "@/lib/request-ip"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { createSessionToken, getSessionCookieName, getSessionCookieOptions } from "@/lib/session"
 import { getServerSiteSettings } from "@/lib/site-settings"
+import { VerificationChannel } from "@/lib/shared/verification-channel"
 import { verifyTurnstileToken } from "@/lib/turnstile"
 import { validateLoginPayload } from "@/lib/validators"
+import { verifyCode } from "@/lib/verification"
 import { createRequestWriteGuardOptions } from "@/lib/write-guard-policies"
 import { withRequestWriteGuard } from "@/lib/write-guard"
 import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 
 export const POST = createRouteHandler(async ({ request }) => {
   const body = await readJsonBody(request)
-  const validated = validateLoginPayload(body)
+  const loginMode = readOptionalStringField(body, "loginMode")
+  const phoneCode = readOptionalStringField(body, "phoneCode")
+  const validated = loginMode === "phone-code" || phoneCode
+    ? {
+        success: true,
+        data: {
+          login: readOptionalStringField(body, "login") || readOptionalStringField(body, "username"),
+          password: "",
+        },
+      }
+    : validateLoginPayload(body)
 
   if (!validated.success || !validated.data) {
     apiError(400, validated.message ?? "参数错误")
@@ -78,10 +91,127 @@ export const POST = createRouteHandler(async ({ request }) => {
       addonFields,
     })
 
+    if (loginMode === "phone-code" || phoneCode) {
+      if (!login) {
+        apiError(400, "请输入手机号")
+      }
+
+      if (!/^1\d{10}$/.test(login)) {
+        apiError(400, "请输入正确的手机号")
+      }
+
+      if (!/^\d{6}$/.test(phoneCode)) {
+        apiError(400, "请输入 6 位短信验证码")
+      }
+
+      const user = await findUserByPhone(login)
+
+      if (!user) {
+        apiError(401, "手机号或验证码错误")
+      }
+
+      if (user.status === "BANNED") {
+        apiError(403, "该账号已被拉黑，无法登录")
+      }
+
+      if (user.status === "INACTIVE") {
+        apiError(403, "该账号未激活，无法登录")
+      }
+
+      if (!user.phoneVerifiedAt) {
+        apiError(403, "该手机号尚未完成绑定验证")
+      }
+
+      await verifyCode({
+        channel: VerificationChannel.PHONE,
+        target: login,
+        code: phoneCode,
+        purpose: "login",
+      })
+
+      await validateLoginWithAddonProviders({
+        request,
+        username: login,
+        user: {
+          id: user.id,
+          username: user.username,
+        },
+        addonFields,
+      })
+
+      const loginIp = getRequestIp(request)
+      const requestUrl = new URL(request.url)
+
+      await executeAddonActionHook("auth.login.before", {
+        userId: user.id,
+        username: user.username,
+        loginIp,
+        method: "phone-code",
+      }, {
+        request,
+        pathname: requestUrl.pathname,
+        searchParams: requestUrl.searchParams,
+        throwOnError: true,
+      })
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            lastLoginAt: new Date(),
+            lastLoginIp: loginIp,
+          },
+        })
+
+        await tx.userLoginLog.create({
+          data: {
+            userId: user.id,
+            ip: loginIp,
+            userAgent: request.headers.get("user-agent"),
+          },
+        })
+      })
+
+      void maybeEnqueueLoginIpChangeAlert({
+        userId: user.id,
+        previousIp: user.lastLoginIp,
+        currentIp: loginIp,
+        userAgent: request.headers.get("user-agent"),
+      })
+
+      const response = NextResponse.json(apiSuccess({ username: user.username }, "success"))
+      const sessionToken = await createSessionToken(user.username, loginIp)
+      response.cookies.set(getSessionCookieName(), sessionToken, getSessionCookieOptions({ request }))
+      await executeAddonActionHook("auth.login.after", {
+        userId: user.id,
+        username: user.username,
+        loginIp,
+        method: "phone-code",
+      }, {
+        request,
+        pathname: requestUrl.pathname,
+        searchParams: requestUrl.searchParams,
+      })
+
+      logRouteWriteSuccess({
+        scope: "auth-login",
+        action: "login",
+      }, {
+        userId: user.id,
+        targetId: user.username,
+        extra: {
+          loginIp,
+          method: "phone-code",
+        },
+      })
+
+      return response
+    }
+
     const user = await findUserLoginCandidate(login)
 
     if (!user) {
-      apiError(401, "邮箱/用户名或密码错误")
+      apiError(401, "邮箱/用户名/手机号或密码错误")
     }
 
     if (user.status === "BANNED") {
@@ -95,7 +225,7 @@ export const POST = createRouteHandler(async ({ request }) => {
     const isValid = await compare(password, user.passwordHash)
 
     if (!isValid) {
-      apiError(401, "邮箱/用户名或密码错误")
+      apiError(401, "邮箱/用户名/手机号或密码错误")
     }
 
     await validateLoginWithAddonProviders({

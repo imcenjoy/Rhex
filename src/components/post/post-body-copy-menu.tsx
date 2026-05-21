@@ -141,7 +141,7 @@ export function PostBodyCopyMenu({ post, postLinkDisplayMode = "SLUG", canReport
             ) : null}
           </div>
         ) : null}
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"

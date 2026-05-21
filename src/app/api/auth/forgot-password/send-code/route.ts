@@ -1,9 +1,10 @@
 import { findUserByEmail } from "@/db/password-reset-queries"
-import { apiError, apiSuccess, createRouteHandler, readJsonBody, requireStringField } from "@/lib/api-route"
+import { apiError, apiSuccess, createRouteHandler, readJsonBody, readOptionalStringField, requireStringField } from "@/lib/api-route"
 import { normalizeEmailAddress } from "@/lib/email"
 import { canSendEmail } from "@/lib/mailer"
+import { isValidMainlandPhone, normalizePhoneNumber } from "@/lib/phone"
 import { getRequestIp } from "@/lib/request-ip"
-import { sendPasswordResetCode } from "@/lib/password-reset"
+import { sendPasswordResetCode, sendPasswordResetPhoneCode } from "@/lib/password-reset"
 import { createRequestWriteGuardOptions } from "@/lib/write-guard-policies"
 import { withRequestWriteGuard } from "@/lib/write-guard"
 
@@ -13,6 +14,36 @@ function isValidEmail(value: string) {
 
 export const POST = createRouteHandler(async ({ request }) => {
   const body = await readJsonBody(request)
+  const channel = (readOptionalStringField(body, "channel") || "EMAIL").toUpperCase()
+
+  if (channel === "PHONE") {
+    const phone = normalizePhoneNumber(requireStringField(body, "phone", "请输入手机号"))
+
+    if (!isValidMainlandPhone(phone)) {
+      apiError(400, "手机号格式不正确")
+    }
+
+    return withRequestWriteGuard(createRequestWriteGuardOptions("auth-forgot-password-send-code", {
+      request,
+      input: {
+        channel,
+        phone,
+      },
+    }), async () => {
+      const result = await sendPasswordResetPhoneCode({
+        phone,
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("user-agent"),
+      })
+
+      return apiSuccess(result, "验证码已发送到手机")
+    })
+  }
+
+  if (channel !== "EMAIL") {
+    apiError(400, "找回方式参数不正确")
+  }
+
   const email = normalizeEmailAddress(requireStringField(body, "email", "请输入邮箱"))
 
   if (!email) {

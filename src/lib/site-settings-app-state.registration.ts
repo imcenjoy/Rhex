@@ -33,6 +33,7 @@ import type {
   RegistrationEmailTemplateSettings,
   RegistrationRewardSettings,
   SiteSecuritySettings,
+  SmsProviderSettings,
 } from "@/lib/site-settings-app-state.types"
 
 export function resolveCheckInRewardSettings(options: {
@@ -501,6 +502,49 @@ export function mergeAuthProviderSettings(
       githubEnabled: input.githubEnabled,
       googleEnabled: input.googleEnabled,
       passkeyEnabled: input.passkeyEnabled,
+    },
+  })
+}
+
+export function resolveSmsProviderSettings(options: {
+  appStateJson?: string | null
+} = {}): SmsProviderSettings {
+  const siteSettingsState = readSiteSettingsState(options.appStateJson)
+  const smsProvider = isRecord(siteSettingsState.smsProvider)
+    ? siteSettingsState.smsProvider
+    : {}
+
+  return {
+    enabled: typeof smsProvider.enabled === "boolean" ? smsProvider.enabled : false,
+    aliyunEndpoint: typeof smsProvider.aliyunEndpoint === "string" && smsProvider.aliyunEndpoint.trim()
+      ? smsProvider.aliyunEndpoint.trim()
+      : "dysmsapi.aliyuncs.com",
+    aliyunRegionId: typeof smsProvider.aliyunRegionId === "string" && smsProvider.aliyunRegionId.trim()
+      ? smsProvider.aliyunRegionId.trim()
+      : "cn-hangzhou",
+    aliyunSignName: typeof smsProvider.aliyunSignName === "string" ? smsProvider.aliyunSignName.trim() : "",
+    aliyunTemplateCode: typeof smsProvider.aliyunTemplateCode === "string" ? smsProvider.aliyunTemplateCode.trim() : "",
+    aliyunCodeParamName: typeof smsProvider.aliyunCodeParamName === "string" && smsProvider.aliyunCodeParamName.trim()
+      ? smsProvider.aliyunCodeParamName.trim()
+      : "code",
+  }
+}
+
+export function mergeSmsProviderSettings(
+  appStateJson: string | null | undefined,
+  input: SmsProviderSettings,
+) {
+  const siteSettingsState = readSiteSettingsState(appStateJson)
+
+  return writeSiteSettingsState(appStateJson, {
+    ...siteSettingsState,
+    smsProvider: {
+      enabled: Boolean(input.enabled),
+      aliyunEndpoint: input.aliyunEndpoint.trim() || "dysmsapi.aliyuncs.com",
+      aliyunRegionId: input.aliyunRegionId.trim() || "cn-hangzhou",
+      aliyunSignName: input.aliyunSignName.trim(),
+      aliyunTemplateCode: input.aliyunTemplateCode.trim(),
+      aliyunCodeParamName: input.aliyunCodeParamName.trim() || "code",
     },
   })
 }

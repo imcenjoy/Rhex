@@ -69,6 +69,9 @@ interface LotteryPanelProps {
       title: string
       description: string
       quantity: number
+      type: string
+      pointsAmount: number | null
+      vipPlan: string | null
       winnerCount: number
       winners: Array<{
         userId: number
@@ -457,7 +460,12 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                             共 {prize.quantity} 名{isDrawn ? ` · 已开奖 ${prize.winnerCount} 名` : ""}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px]">{formatNumber(prize.quantity)}</Badge>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px]">{formatNumber(prize.quantity)}</Badge>
+                          {prize.type === "POINTS" || prize.type === "VIP" ? (
+                            <Badge variant="outline" className="rounded-full px-1.5 py-0 text-[10px]">自动发放</Badge>
+                          ) : null}
+                        </div>
                       </div>
                       <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{prize.description}</p>
                     </div>
@@ -466,14 +474,13 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
               </div>
 
               <Collapsible open={conditionsOpen} onOpenChange={setConditionsOpen}>
-                <div className="rounded-[18px] border border-border bg-card/70 p-3">
+                <div className="rounded-[18px]  bg-card/70 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-medium text-foreground">参与条件</p>
                       <Badge variant="outline" className="rounded-full">{conditionCount}</Badge>
-                    </div>
-                    <CollapsibleTrigger
+                                      <CollapsibleTrigger
                       render={(
                         <Button
                           type="button"
@@ -487,6 +494,8 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                     >
                       {conditionsOpen ? <ChevronUp /> : <ChevronDown />}
                     </CollapsibleTrigger>
+                    </div>
+    
                   </div>
 
                   <CollapsibleContent>

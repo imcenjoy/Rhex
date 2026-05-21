@@ -9,6 +9,8 @@ export interface ServerSiteSettingsSensitiveData {
   turnstileSecretKey?: string | null
   uploadS3AccessKeyId?: string | null
   uploadS3SecretAccessKey?: string | null
+  smsAliyunAccessKeyId?: string | null
+  smsAliyunAccessKeySecret?: string | null
   smtpHost?: string | null
   smtpPort?: number | null
   smtpUser?: string | null

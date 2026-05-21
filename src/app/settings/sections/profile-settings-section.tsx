@@ -34,6 +34,9 @@ const profileSectionCopy: Record<ProfileTabKey, { title: string; description: st
 export function ProfileSettingsSection({ data }: { data: SettingsPageData }) {
   const { route, profile, dbUser, settings, accountBindings } = data
   const panelMeta = profileSectionCopy[route.currentProfileTab]
+  const basicSections = data.smsDeliveryEnabled
+    ? ["basic", "avatar", "email", "phone", "password"] as const
+    : ["basic", "avatar", "email", "password"] as const
 
   return (
     <Card>
@@ -57,6 +60,8 @@ export function ProfileSettingsSection({ data }: { data: SettingsPageData }) {
             initialAvatarPath={profile.avatarPath}
             initialEmail={dbUser?.email ?? null}
             initialEmailVerified={Boolean(dbUser?.emailVerifiedAt)}
+            initialPhone={dbUser?.phone ?? null}
+            initialPhoneVerified={Boolean(dbUser?.phoneVerifiedAt)}
             passwordChangeRequireEmailVerification={settings.passwordChangeRequireEmailVerification}
             emailDeliveryEnabled={settings.smtpEnabled}
             initialActivityVisibility={dbUser?.activityVisibility ?? "PUBLIC"}
@@ -72,7 +77,7 @@ export function ProfileSettingsSection({ data }: { data: SettingsPageData }) {
             markdownEmojiMap={settings.markdownEmojiMap}
             markdownImageUploadEnabled={settings.markdownImageUploadEnabled}
             initialSection={route.currentProfileTab === "privacy" ? "privacy" : "basic"}
-            availableSections={route.currentProfileTab === "privacy" ? ["privacy"] : ["basic", "avatar", "email", "password"]}
+            availableSections={route.currentProfileTab === "privacy" ? ["privacy"] : [...basicSections]}
           />
         ) : null}
 

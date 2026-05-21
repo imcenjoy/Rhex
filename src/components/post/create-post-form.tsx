@@ -24,6 +24,9 @@ export function CreatePostForm({
   addonSubmitAfter,
   anonymousPostEnabled = false,
   anonymousPostPrice = 0,
+  vipMonthlyPrice = 0,
+  vipQuarterlyPrice = 0,
+  vipYearlyPrice = 0,
   postRedPacketEnabled = false,
   postRedPacketMaxPoints = 100,
   postJackpotEnabled = false,
@@ -98,6 +101,9 @@ export function CreatePostForm({
         markdownEmojiMap={markdownEmojiMap}
         viewLevelOptions={viewLevelOptions}
         viewVipLevelOptions={viewVipLevelOptions}
+        vipMonthlyPrice={vipMonthlyPrice}
+        vipQuarterlyPrice={vipQuarterlyPrice}
+        vipYearlyPrice={vipYearlyPrice}
         postJackpotHitProbability={postJackpotHitProbability}
         draftController={draftController}
         submitController={submitController}

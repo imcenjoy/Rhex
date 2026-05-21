@@ -3,11 +3,14 @@ import Link from "next/link"
 import { BookCheck, Crown, FileText, MessageSquareText, Scale, ShieldAlert } from "lucide-react"
 
 import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
+import { CustomPageRenderer } from "@/components/custom-page-renderer"
 import { ForumPageShell } from "@/components/forum/forum-page-shell"
 import { buildHomeSidebarCurrentUserSettings, HomeSidebarPanels } from "@/components/home/home-sidebar-panels"
 import { SiteHeader } from "@/components/site-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { getBoards } from "@/lib/boards"
+import { getPublishedCustomPageByPath } from "@/lib/custom-pages"
+import { stripCustomPageHtmlToText } from "@/lib/custom-page-types"
 import { getHomeSidebarHotTopics } from "@/lib/home-sidebar"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getZones } from "@/lib/zones"
@@ -34,7 +37,24 @@ const highlights = [
 export const dynamic = "force-dynamic"
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings()
+  const [settings, customPage] = await Promise.all([
+    getSiteSettings(),
+    getPublishedCustomPageByPath("/terms"),
+  ])
+
+  if (customPage) {
+    const description = stripCustomPageHtmlToText(customPage.htmlContent, 120) || settings.siteDescription
+
+    return {
+      title: `${customPage.title} - ${settings.siteName}`,
+      description,
+      openGraph: {
+        title: `${customPage.title} - ${settings.siteName}`,
+        description,
+        type: "website",
+      },
+    }
+  }
 
   return {
     title: `论坛协议 - ${settings.siteName}`,
@@ -48,6 +68,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TermsPage() {
+  const customPage = await getPublishedCustomPageByPath("/terms")
+  if (customPage) {
+    return <CustomPageRenderer page={customPage} routePath="/terms" />
+  }
+
   const settingsPromise = getSiteSettings()
   const [settings, boards, zones, hotTopics, announcements] = await Promise.all([
     settingsPromise,

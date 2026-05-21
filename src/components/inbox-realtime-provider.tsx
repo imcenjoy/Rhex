@@ -26,6 +26,111 @@ const defaultInboxRealtimeContextValue: InboxRealtimeContextValue = {
 }
 
 const InboxRealtimeContext = createContext<InboxRealtimeContextValue>(defaultInboxRealtimeContextValue)
+const CROSS_TAB_LEADER_HEARTBEAT_MS = 4_000
+const CROSS_TAB_LEADER_TTL_MS = 12_000
+
+interface InboxRealtimeLeaderLease {
+  ownerId: string
+  expiresAt: number
+}
+
+type InboxRealtimeChannelMessage =
+  | {
+    type: "event"
+    senderId: string
+    event: InboxStreamEvent
+  }
+  | {
+    type: "cursor"
+    senderId: string
+    cursor: string
+  }
+  | {
+    type: "status"
+    senderId: string
+    status: InboxConnectionStatus
+  }
+type InboxRealtimeChannelMessageInput = InboxRealtimeChannelMessage extends infer Message
+  ? Message extends unknown
+    ? Omit<Message, "senderId">
+    : never
+  : never
+
+function createInboxRealtimeTabId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+
+  return `${Date.now()}:${Math.random().toString(36).slice(2)}`
+}
+
+function getInboxRealtimeLeaderKey(userId: number) {
+  return `bbs:inbox-realtime:leader:${userId}`
+}
+
+function getInboxRealtimeChannelName(userId: number) {
+  return `bbs:inbox-realtime:${userId}`
+}
+
+function canUseLeaderStorage(key: string) {
+  try {
+    const probeKey = `${key}:probe`
+    window.localStorage.setItem(probeKey, "1")
+    window.localStorage.removeItem(probeKey)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function readLeaderLease(key: string): InboxRealtimeLeaderLease | null {
+  try {
+    const rawValue = window.localStorage.getItem(key)
+    if (!rawValue) {
+      return null
+    }
+
+    const parsed = JSON.parse(rawValue) as Partial<InboxRealtimeLeaderLease>
+    if (typeof parsed.ownerId !== "string" || typeof parsed.expiresAt !== "number") {
+      return null
+    }
+
+    return {
+      ownerId: parsed.ownerId,
+      expiresAt: parsed.expiresAt,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeLeaderLease(key: string, ownerId: string) {
+  const lease = {
+    ownerId,
+    expiresAt: Date.now() + CROSS_TAB_LEADER_TTL_MS,
+  } satisfies InboxRealtimeLeaderLease
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(lease))
+    return readLeaderLease(key)?.ownerId === ownerId
+  } catch {
+    return false
+  }
+}
+
+function releaseLeaderLease(key: string, ownerId: string) {
+  try {
+    if (readLeaderLease(key)?.ownerId === ownerId) {
+      window.localStorage.removeItem(key)
+    }
+  } catch {
+    // localStorage may be unavailable in restricted browser modes.
+  }
+}
+
+function isLeaderLeaseActive(lease: InboxRealtimeLeaderLease | null) {
+  return Boolean(lease && lease.expiresAt > Date.now())
+}
 
 function buildAttentionTitle(pathname: string, unreadMessageCount: number, unreadNotificationCount: number) {
   const visibleUnreadMessageCount = pathname === "/messages" ? 0 : unreadMessageCount
@@ -326,6 +431,14 @@ export function InboxRealtimeProvider({
 
     let closed = false
     let eventSource: EventSource | null = null
+    let isLeader = false
+    let leaderStatus: InboxConnectionStatus = "connecting"
+    let leaderTimer: number | null = null
+    const tabId = createInboxRealtimeTabId()
+    const leaderKey = getInboxRealtimeLeaderKey(currentUserId)
+    const channel = typeof BroadcastChannel === "function" && canUseLeaderStorage(leaderKey)
+      ? new BroadcastChannel(getInboxRealtimeChannelName(currentUserId))
+      : null
 
     const clearReconnectTimer = () => {
       if (reconnectTimerRef.current) {
@@ -334,12 +447,35 @@ export function InboxRealtimeProvider({
       }
     }
 
+    const closeEventSource = () => {
+      if (eventSource) {
+        eventSource.close()
+        eventSource = null
+      }
+    }
+
+    const postChannelMessage = (message: InboxRealtimeChannelMessageInput) => {
+      channel?.postMessage({
+        ...message,
+        senderId: tabId,
+      } as InboxRealtimeChannelMessage)
+    }
+
+    const setSharedConnectionStatus = (status: InboxConnectionStatus) => {
+      leaderStatus = status
+      setConnectionStatus(status)
+      postChannelMessage({
+        type: "status",
+        status,
+      })
+    }
+
     const scheduleReconnect = () => {
       if (closed || reconnectTimerRef.current) {
         return
       }
 
-      setConnectionStatus("connecting")
+      setSharedConnectionStatus("connecting")
       const delay = Math.min(30_000, 1_000 * 2 ** reconnectAttemptRef.current)
       reconnectAttemptRef.current += 1
 
@@ -369,15 +505,7 @@ export function InboxRealtimeProvider({
       return previousCounts
     }
 
-    const handleStreamMessage = (event: MessageEvent<string>) => {
-      let payload: InboxStreamEvent
-
-      try {
-        payload = JSON.parse(event.data) as InboxStreamEvent
-      } catch {
-        return
-      }
-
+    const handleInboxEvent = (payload: InboxStreamEvent) => {
       const previousCounts = applyEventState(payload)
 
       if (messageEnabled && shouldPlayInboxPrompt(payload, currentUserIdRef.current, previousCounts)) {
@@ -389,27 +517,47 @@ export function InboxRealtimeProvider({
       }
     }
 
-    const handleCursor = (event: Event) => {
-      let payload: { cursor?: string }
-
+    const handleStreamMessage = (event: MessageEvent<string>) => {
       try {
-        payload = JSON.parse((event as MessageEvent<string>).data) as { cursor?: string }
+        const payload = JSON.parse(event.data) as InboxStreamEvent
+        handleInboxEvent(payload)
+
+        if (payload.type !== "heartbeat") {
+          postChannelMessage({
+            type: "event",
+            event: payload,
+          })
+        }
       } catch {
         return
       }
+    }
 
+    const handleCursorPayload = (payload: { cursor?: string }) => {
       if (typeof payload.cursor === "string" && payload.cursor) {
         streamCursorRef.current = payload.cursor
+        postChannelMessage({
+          type: "cursor",
+          cursor: payload.cursor,
+        })
+      }
+    }
+
+    const handleCursor = (event: Event) => {
+      try {
+        handleCursorPayload(JSON.parse((event as MessageEvent<string>).data) as { cursor?: string })
+      } catch {
+        return
       }
     }
 
     const connect = () => {
-      if (closed) {
+      if (closed || channel && !isLeader) {
         return
       }
 
       clearReconnectTimer()
-      setConnectionStatus("connecting")
+      setSharedConnectionStatus("connecting")
 
       const streamUrl = new URL("/api/messages/stream", window.location.origin)
       if (streamCursorRef.current) {
@@ -420,29 +568,119 @@ export function InboxRealtimeProvider({
 
       eventSource.onopen = () => {
         reconnectAttemptRef.current = 0
-        setConnectionStatus("connected")
+        setSharedConnectionStatus("connected")
       }
 
       eventSource.onmessage = handleStreamMessage
       eventSource.addEventListener("cursor", handleCursor as EventListener)
       eventSource.onerror = () => {
-        if (eventSource) {
-          eventSource.close()
-          eventSource = null
-        }
-
+        closeEventSource()
         scheduleReconnect()
       }
     }
 
-    connect()
+    const stopLeading = () => {
+      if (!isLeader) {
+        return
+      }
+
+      isLeader = false
+      clearReconnectTimer()
+      closeEventSource()
+      releaseLeaderLease(leaderKey, tabId)
+      setConnectionStatus("connecting")
+    }
+
+    const refreshLeaderLease = () => {
+      if (!isLeader) {
+        return false
+      }
+
+      if (!writeLeaderLease(leaderKey, tabId)) {
+        stopLeading()
+        return false
+      }
+
+      postChannelMessage({
+        type: "status",
+        status: leaderStatus,
+      })
+      return true
+    }
+
+    const startLeading = () => {
+      if (closed || isLeader || !writeLeaderLease(leaderKey, tabId)) {
+        return
+      }
+
+      isLeader = true
+      leaderStatus = "connecting"
+      connect()
+    }
+
+    const checkLeadership = () => {
+      if (closed) {
+        return
+      }
+
+      if (!channel) {
+        if (!eventSource && !reconnectTimerRef.current) {
+          connect()
+        }
+        return
+      }
+
+      if (isLeader) {
+        refreshLeaderLease()
+        return
+      }
+
+      if (!isLeaderLeaseActive(readLeaderLease(leaderKey))) {
+        startLeading()
+      }
+    }
+
+    if (channel) {
+      channel.onmessage = (event: MessageEvent<InboxRealtimeChannelMessage>) => {
+        const message = event.data
+        if (!message || message.senderId === tabId) {
+          return
+        }
+
+        if (message.type === "event") {
+          handleInboxEvent(message.event)
+          return
+        }
+
+        if (message.type === "cursor") {
+          streamCursorRef.current = message.cursor
+          return
+        }
+
+        if (message.type === "status") {
+          setConnectionStatus(message.status)
+        }
+      }
+
+      window.addEventListener("storage", checkLeadership)
+      leaderTimer = window.setInterval(checkLeadership, CROSS_TAB_LEADER_HEARTBEAT_MS)
+      checkLeadership()
+    } else {
+      connect()
+    }
 
     return () => {
       closed = true
+      if (leaderTimer) {
+        window.clearInterval(leaderTimer)
+      }
+      window.removeEventListener("storage", checkLeadership)
       clearReconnectTimer()
       reconnectAttemptRef.current = 0
       setConnectionStatus("closed")
-      eventSource?.close()
+      closeEventSource()
+      releaseLeaderLease(leaderKey, tabId)
+      channel?.close()
     }
   }, [currentUserId, messageEnabled, notifyListeners, playPromptAudio, restoreDocumentTitle])
 

@@ -12,6 +12,7 @@ import {
   mergeRegistrationEmailTemplateSettings,
   mergeRegistrationRewardSettings,
   mergeSiteSecuritySettings,
+  mergeSmsProviderSettings,
   mergeUsernameSensitiveWordSettings,
   resolveRegisterInviteCodeHelpSettings,
   resolveRegisterEmailWhitelistSettings,
@@ -20,9 +21,10 @@ import {
   resolveRegisterPasswordPolicySettings,
   resolveRegistrationRewardSettings,
   resolveSiteSecuritySettings,
+  resolveSmsProviderSettings,
   resolveUsernameSensitiveWordSettings,
 } from "@/lib/site-settings-app-state"
-import { mergeAuthProviderSensitiveConfig, mergeCaptchaSensitiveConfig } from "@/lib/site-settings-sensitive-state"
+import { mergeAuthProviderSensitiveConfig, mergeCaptchaSensitiveConfig, mergeSmsSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { normalizeCaptchaMode } from "@/lib/shared/config-parsers"
 import { normalizeUsernameSensitiveWords } from "@/lib/username-sensitive-words"
 import { normalizePasswordMinLength, normalizePasswordStrength } from "@/lib/password-policy"
@@ -128,6 +130,17 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const authGithubEnabled = Boolean(body.authGithubEnabled)
   const authGoogleEnabled = Boolean(body.authGoogleEnabled)
   const authPasskeyEnabled = Boolean(body.authPasskeyEnabled)
+  const existingSmsProviderSettings = resolveSmsProviderSettings({
+    appStateJson: existing.appStateJson,
+  })
+  const smsEnabled = Boolean(body.smsEnabled)
+  const smsAliyunAccessKeyId = readOptionalStringField(body, "smsAliyunAccessKeyId") || null
+  const smsAliyunAccessKeySecret = readOptionalStringField(body, "smsAliyunAccessKeySecret") || null
+  const smsAliyunEndpoint = readOptionalStringField(body, "smsAliyunEndpoint") || existingSmsProviderSettings.aliyunEndpoint
+  const smsAliyunRegionId = readOptionalStringField(body, "smsAliyunRegionId") || existingSmsProviderSettings.aliyunRegionId
+  const smsAliyunSignName = readOptionalStringField(body, "smsAliyunSignName") || null
+  const smsAliyunTemplateCode = readOptionalStringField(body, "smsAliyunTemplateCode") || null
+  const smsAliyunCodeParamName = readOptionalStringField(body, "smsAliyunCodeParamName") || existingSmsProviderSettings.aliyunCodeParamName
   const githubClientId = readOptionalStringField(body, "githubClientId") || null
   const githubClientSecret = readOptionalStringField(body, "githubClientSecret") || null
   const googleClientId = readOptionalStringField(body, "googleClientId") || null
@@ -185,6 +198,10 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
 
   if (smtpEnabled && (!smtpHost || !smtpPort || !smtpUser || !smtpPass || !smtpFrom)) {
     apiError(400, "开启 SMTP 时请完整填写主机、端口、账号、密码和发件人地址")
+  }
+
+  if (smsEnabled && (!smsAliyunAccessKeyId || !smsAliyunAccessKeySecret || !smsAliyunSignName || !smsAliyunTemplateCode)) {
+    apiError(400, "开启内置阿里云短信时请完整填写 AccessKey、短信签名和模板 Code")
   }
 
   if (registerNicknameMaxLength < registerNicknameMinLength) {
@@ -251,9 +268,17 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     usernameSensitiveWordsEnabled,
     usernameSensitiveWords,
   })
-  const appStateJson = mergeRegisterEmailWhitelistSettings(appStateWithUsernameSensitiveWords, {
+  const appStateWithRegisterEmailWhitelist = mergeRegisterEmailWhitelistSettings(appStateWithUsernameSensitiveWords, {
     enabled: registerEmailWhitelistEnabled,
     domains: registerEmailWhitelistDomains,
+  })
+  const appStateJson = mergeSmsProviderSettings(appStateWithRegisterEmailWhitelist, {
+    enabled: smsEnabled,
+    aliyunEndpoint: smsAliyunEndpoint,
+    aliyunRegionId: smsAliyunRegionId,
+    aliyunSignName: smsAliyunSignName ?? "",
+    aliyunTemplateCode: smsAliyunTemplateCode ?? "",
+    aliyunCodeParamName: smsAliyunCodeParamName,
   })
   const currentSensitiveStateJson = ("sensitiveStateJson" in existing ? existing.sensitiveStateJson : null) ?? null
   const sensitiveStateWithAuthProvider = mergeAuthProviderSensitiveConfig(currentSensitiveStateJson, {
@@ -265,10 +290,14 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     passkeyRpName,
     passkeyOrigin,
   })
-  const sensitiveStateJson = mergeCaptchaSensitiveConfig(sensitiveStateWithAuthProvider, {
+  const sensitiveStateWithCaptcha = mergeCaptchaSensitiveConfig(sensitiveStateWithAuthProvider, {
     turnstileSecretKey: registerCaptchaMode === "TURNSTILE" || loginCaptchaMode === "TURNSTILE"
       ? turnstileSecretKey
       : null,
+  })
+  const sensitiveStateJson = mergeSmsSensitiveConfig(sensitiveStateWithCaptcha, {
+    aliyunAccessKeyId: smsEnabled ? smsAliyunAccessKeyId : null,
+    aliyunAccessKeySecret: smsEnabled ? smsAliyunAccessKeySecret : null,
   })
 
   const settings = await updateSiteSettingsRecord(existing.id, {

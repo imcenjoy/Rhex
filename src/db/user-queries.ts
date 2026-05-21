@@ -211,6 +211,8 @@ export function findUserAccountSettingsById(userId: number) {
     select: {
       email: true,
       emailVerifiedAt: true,
+      phone: true,
+      phoneVerifiedAt: true,
       signature: true,
     },
   })

@@ -482,6 +482,7 @@ export function validateProfilePayload(body: unknown, options: NicknameValidatio
   bio: string
   introduction: string
   email: string
+  phone: string
   gender: string
 }> {
   const rawNickname = getField(body, "nickname")
@@ -489,6 +490,7 @@ export function validateProfilePayload(body: unknown, options: NicknameValidatio
   const bio = normalizeString(getField(body, "bio"))
   const introduction = normalizeString(getField(body, "introduction"))
   const email = normalizeEmailAddress(normalizeString(getField(body, "email")))
+  const phone = normalizeString(getField(body, "phone"))
   const gender = normalizeString(getField(body, "gender"))
 
   if (!nickname) {
@@ -521,6 +523,10 @@ export function validateProfilePayload(body: unknown, options: NicknameValidatio
     return { success: false, message: "邮箱格式不正确" }
   }
 
+  if (phone && !isValidPhone(phone)) {
+    return { success: false, message: "手机号格式不正确" }
+  }
+
   if (gender && !["male", "female", "unknown"].includes(gender)) {
     return { success: false, message: "性别参数不正确" }
   }
@@ -532,6 +538,7 @@ export function validateProfilePayload(body: unknown, options: NicknameValidatio
       bio,
       introduction,
       email,
+      phone,
       gender,
     },
   }

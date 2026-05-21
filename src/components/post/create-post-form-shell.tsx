@@ -43,6 +43,9 @@ interface CreatePostFormShellProps {
   markdownEmojiMap?: MarkdownEmojiItem[]
   viewLevelOptions: AccessThresholdOption[]
   viewVipLevelOptions: AccessThresholdOption[]
+  vipMonthlyPrice: number
+  vipQuarterlyPrice: number
+  vipYearlyPrice: number
   postJackpotHitProbability: number
   draftController: CreatePostDraftController
   submitController: CreatePostSubmitController
@@ -85,6 +88,9 @@ export function CreatePostFormShell({
   markdownEmojiMap,
   viewLevelOptions,
   viewVipLevelOptions,
+  vipMonthlyPrice,
+  vipQuarterlyPrice,
+  vipYearlyPrice,
   postJackpotHitProbability,
   draftController,
   submitController,
@@ -447,6 +453,9 @@ export function CreatePostFormShell({
           lotteryConditions={draft.lotteryConditions}
           userLevelOptions={viewLevelOptions}
           vipLevelOptions={viewVipLevelOptions}
+          vipMonthlyPrice={vipMonthlyPrice}
+          vipQuarterlyPrice={vipQuarterlyPrice}
+          vipYearlyPrice={vipYearlyPrice}
           onLotteryStartsAtChange={(value) => updateDraftField("lotteryStartsAt", value)}
           onLotteryEndsAtChange={(value) => updateDraftField("lotteryEndsAt", value)}
           onLotteryParticipantGoalChange={(value) =>

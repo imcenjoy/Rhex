@@ -1111,13 +1111,15 @@
     }
 
     .forum-page-shell[data-sidebar-display-mode='hidden'],
-    .forum-page-shell[data-sidebar-display-mode='docked'] {
+    .forum-page-shell[data-sidebar-display-mode='docked'],
+    .forum-page-shell[data-sidebar-display-mode='docked-open'] {
       grid-template-columns: minmax(0, 1fr) 274px;
       column-gap: 1.5rem;
     }
 
     .forum-page-shell[data-sidebar-display-mode='hidden'] .forum-page-right-sidebar,
-    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-right-sidebar {
+    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-right-sidebar,
+    .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-right-sidebar {
       width: 274px;
       max-width: 274px;
     }
@@ -1135,7 +1137,8 @@
     }
 
     .forum-page-shell[data-sidebar-display-mode='hidden'][data-has-right-sidebar='false'],
-    .forum-page-shell[data-sidebar-display-mode='docked'][data-has-right-sidebar='false'] {
+    .forum-page-shell[data-sidebar-display-mode='docked'][data-has-right-sidebar='false'],
+    .forum-page-shell[data-sidebar-display-mode='docked-open'][data-has-right-sidebar='false'] {
       grid-template-columns: minmax(0, 1fr);
     }
 
@@ -1196,7 +1199,8 @@
       grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
     }
 
-    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked {
+    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked,
+    .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked {
       position: fixed;
       top: 3.5rem;
       left: 0;
@@ -1205,7 +1209,8 @@
       margin-left: 0;
     }
 
-    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-inner {
+    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-inner,
+    .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-inner {
       position: relative;
       top: 0;
       height: calc(100vh - 3.5rem);
@@ -1222,13 +1227,15 @@
       pointer-events: none;
     }
 
-    html[data-sidebar-collapsed='false'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-inner {
+    html[data-sidebar-collapsed='false'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-inner,
+    html[data-sidebar-collapsed='false'] .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-inner {
       transform: translateX(0);
       opacity: 1;
       pointer-events: auto;
     }
 
-    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail {
+    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail,
+    .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-rail {
       position: fixed;
       left: 0;
       top: calc(3.5rem + 1.5rem);
@@ -1247,24 +1254,28 @@
       transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease;
     }
 
-    html[data-sidebar-collapsed='false'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail {
+    html[data-sidebar-collapsed='false'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail,
+    html[data-sidebar-collapsed='false'] .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-rail {
       opacity: 0;
       pointer-events: none;
       transform: translateX(-0.5rem);
     }
 
-    html[data-sidebar-collapsed='true'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail {
+    html[data-sidebar-collapsed='true'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail,
+    html[data-sidebar-collapsed='true'] .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-rail {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
     }
 
-    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail:hover {
+    .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail:hover,
+    .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-rail:hover {
       background: hsl(var(--accent));
       color: hsl(var(--foreground));
     }
 
-    html[data-sidebar-collapsed='true'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail-icon {
+    html[data-sidebar-collapsed='true'] .forum-page-shell[data-sidebar-display-mode='docked'] .forum-page-sidebar-docked-rail-icon,
+    html[data-sidebar-collapsed='true'] .forum-page-shell[data-sidebar-display-mode='docked-open'] .forum-page-sidebar-docked-rail-icon {
       transform: rotate(180deg);
     }
   }

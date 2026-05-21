@@ -1,6 +1,16 @@
 import { apiError, apiSuccess, createAdminRouteHandler, readJsonBody } from "@/lib/api-route"
 import { parseBusinessDateTime } from "@/lib/formatters"
-import { createRedeemCodes, getRedeemCodeList } from "@/lib/redeem-codes"
+import { createRedeemCodes, deleteRedeemCodes, getRedeemCodeList } from "@/lib/redeem-codes"
+
+type DeleteScope = "single" | "used" | "unused" | "all"
+
+function readDeleteScope(value: unknown): DeleteScope {
+  if (value === "single" || value === "used" || value === "unused" || value === "all") {
+    return value
+  }
+
+  apiError(400, "删除范围不正确")
+}
 
 export const GET = createAdminRouteHandler(async () => {
   const redeemCodes = await getRedeemCodeList()
@@ -48,5 +58,18 @@ export const POST = createAdminRouteHandler(async ({ request, adminUser }) => {
 }, {
   errorMessage: "兑换码生成失败",
   logPrefix: "[api/admin/redeem-codes:POST] unexpected error",
+  unauthorizedMessage: "无权操作",
+})
+
+export const DELETE = createAdminRouteHandler(async ({ request }) => {
+  const body = await readJsonBody(request)
+  const scope = readDeleteScope(body.scope)
+  const id = typeof body.id === "string" ? body.id : undefined
+  const deletedCount = await deleteRedeemCodes({ scope, id })
+
+  return apiSuccess({ deletedCount }, `已删除 ${deletedCount} 个兑换码`)
+}, {
+  errorMessage: "删除兑换码失败",
+  logPrefix: "[api/admin/redeem-codes:DELETE] unexpected error",
   unauthorizedMessage: "无权操作",
 })

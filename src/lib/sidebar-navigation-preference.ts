@@ -2,12 +2,15 @@ import { normalizeLeftSidebarDisplayMode, type LeftSidebarDisplayMode } from "@/
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = "rhex:sidebar-navigation-collapsed"
 const SIDEBAR_COLLAPSED_DOCKED_STORAGE_KEY = "rhex:sidebar-navigation-collapsed:docked"
+const SIDEBAR_COLLAPSED_DOCKED_OPEN_STORAGE_KEY = "rhex:sidebar-navigation-collapsed:docked-open"
 const SIDEBAR_COLLAPSED_CHANGE_EVENT = "rhex:sidebar-navigation-collapsed-change"
 
 function getSidebarNavigationStorageKey(mode: LeftSidebarDisplayMode) {
-  return mode === "DOCKED"
-    ? SIDEBAR_COLLAPSED_DOCKED_STORAGE_KEY
-    : SIDEBAR_COLLAPSED_STORAGE_KEY
+  if (mode === "DOCKED_OPEN") {
+    return SIDEBAR_COLLAPSED_DOCKED_OPEN_STORAGE_KEY
+  }
+
+  return mode === "DOCKED" ? SIDEBAR_COLLAPSED_DOCKED_STORAGE_KEY : SIDEBAR_COLLAPSED_STORAGE_KEY
 }
 
 function getDefaultSidebarCollapsed(mode: LeftSidebarDisplayMode) {
@@ -49,6 +52,8 @@ export function getSidebarNavigationDisplayModeAttribute(mode?: LeftSidebarDispl
       return "hidden"
     case "DOCKED":
       return "docked"
+    case "DOCKED_OPEN":
+      return "docked-open"
     default:
       return "default"
   }
@@ -57,8 +62,10 @@ export function getSidebarNavigationDisplayModeAttribute(mode?: LeftSidebarDispl
 export function getSidebarNavigationInitScript() {
   return `
     try {
-      var mode = (document.documentElement.dataset.sidebarDisplayMode || "").trim().toUpperCase();
-      var storageKey = mode === "DOCKED"
+      var mode = (document.documentElement.dataset.sidebarDisplayMode || "").trim().toUpperCase().replace(/-/g, "_");
+      var storageKey = mode === "DOCKED_OPEN"
+        ? ${JSON.stringify(SIDEBAR_COLLAPSED_DOCKED_OPEN_STORAGE_KEY)}
+        : mode === "DOCKED"
         ? ${JSON.stringify(SIDEBAR_COLLAPSED_DOCKED_STORAGE_KEY)}
         : ${JSON.stringify(SIDEBAR_COLLAPSED_STORAGE_KEY)};
       var stored = window.localStorage.getItem(storageKey);
@@ -67,7 +74,7 @@ export function getSidebarNavigationInitScript() {
         : stored === "1";
       document.documentElement.dataset.sidebarCollapsed = collapsed ? "true" : "false";
     } catch (_error) {
-      var fallbackMode = (document.documentElement.dataset.sidebarDisplayMode || "").trim().toUpperCase();
+      var fallbackMode = (document.documentElement.dataset.sidebarDisplayMode || "").trim().toUpperCase().replace(/-/g, "_");
       document.documentElement.dataset.sidebarCollapsed = fallbackMode === "DOCKED" || fallbackMode === "HIDDEN" ? "true" : "false";
     }
   `
@@ -91,7 +98,11 @@ export function subscribeSidebarNavigationPreference(onStoreChange: () => void) 
   }
 
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === SIDEBAR_COLLAPSED_STORAGE_KEY || event.key === SIDEBAR_COLLAPSED_DOCKED_STORAGE_KEY) {
+    if (
+      event.key === SIDEBAR_COLLAPSED_STORAGE_KEY ||
+      event.key === SIDEBAR_COLLAPSED_DOCKED_STORAGE_KEY ||
+      event.key === SIDEBAR_COLLAPSED_DOCKED_OPEN_STORAGE_KEY
+    ) {
       onStoreChange()
     }
   }

@@ -447,7 +447,7 @@ export function AdminProfileSettingsForm({
                       value as typeof draft.leftSidebarDisplayMode,
                     )}
                   options={[...PROFILE_LEFT_SIDEBAR_DISPLAY_MODE_OPTIONS]}
-                  description="默认保持现在的三栏布局；隐藏会移除左侧导航；吸附模式会把左侧导航收进最左侧抽屉，首次默认隐藏。"
+                  description="默认保持现在的三栏布局；隐藏会移除左侧导航；吸附模式会把左侧导航收进最左侧抽屉，可选择首次默认隐藏或打开。"
                 />
                 <SettingsToggleField
                   label="首页右侧统计卡片"

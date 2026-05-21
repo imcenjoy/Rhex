@@ -42,6 +42,11 @@ export interface UploadStorageSensitiveConfig {
   secretAccessKey: string | null
 }
 
+export interface SmsSensitiveConfig {
+  aliyunAccessKeyId: string | null
+  aliyunAccessKeySecret: string | null
+}
+
 function normalizeNullableString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null
 }
@@ -83,6 +88,18 @@ export function resolveUploadStorageSensitiveConfig(sensitiveStateJson?: string 
   return {
     accessKeyId: normalizeNullableString(uploadStorageConfig.accessKeyId),
     secretAccessKey: normalizeNullableString(uploadStorageConfig.secretAccessKey),
+  }
+}
+
+export function resolveSmsSensitiveConfig(sensitiveStateJson?: string | null): SmsSensitiveConfig {
+  const state = readSensitiveSiteSettingsState(sensitiveStateJson)
+  const smsConfig = isRecord(state.smsConfig)
+    ? state.smsConfig
+    : {}
+
+  return {
+    aliyunAccessKeyId: normalizeNullableString(smsConfig.aliyunAccessKeyId),
+    aliyunAccessKeySecret: normalizeNullableString(smsConfig.aliyunAccessKeySecret),
   }
 }
 
@@ -138,6 +155,24 @@ export function mergeUploadStorageSensitiveConfig(
     uploadStorageConfig: {
       accessKeyId: normalizeNullableString(input.accessKeyId),
       secretAccessKey: normalizeNullableString(input.secretAccessKey),
+    },
+  }
+
+  return JSON.stringify(root)
+}
+
+export function mergeSmsSensitiveConfig(
+  sensitiveStateJson: string | null | undefined,
+  input: SmsSensitiveConfig,
+) {
+  const root = parseSensitiveStateRoot(sensitiveStateJson)
+  const state = readSensitiveSiteSettingsState(sensitiveStateJson)
+
+  root[SITE_SETTINGS_SENSITIVE_KEY] = {
+    ...state,
+    smsConfig: {
+      aliyunAccessKeyId: normalizeNullableString(input.aliyunAccessKeyId),
+      aliyunAccessKeySecret: normalizeNullableString(input.aliyunAccessKeySecret),
     },
   }
 

@@ -1,7 +1,9 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
+import { Trash2 } from "lucide-react"
 
+import { showConfirm } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/rbutton"
 import { TextField } from "@/components/ui/text-field"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -23,6 +25,8 @@ interface AdminRedeemCodeManagerProps {
   }[]
 }
 
+type DeleteScope = "single" | "used" | "unused" | "all"
+
 
 export function AdminRedeemCodeManager({ initialRedeemCodes }: AdminRedeemCodeManagerProps) {
   const [redeemCodes, setRedeemCodes] = useState(initialRedeemCodes)
@@ -38,14 +42,19 @@ export function AdminRedeemCodeManager({ initialRedeemCodes }: AdminRedeemCodeMa
 
   const summary = useMemo(() => ({
     total: redeemCodes.length,
-    unused: redeemCodes.filter((item) => !item.redeemedByUsername).length,
-    used: redeemCodes.filter((item) => item.redeemedByUsername).length,
+    unused: redeemCodes.filter((item) => !item.redeemedAt).length,
+    used: redeemCodes.filter((item) => item.redeemedAt).length,
     permanent: redeemCodes.filter((item) => !item.expiresAt).length,
   }), [redeemCodes])
 
-  const pendingRedeemCodes = useMemo(() => redeemCodes.filter((item) => !item.redeemedByUsername), [redeemCodes])
+  const pendingRedeemCodes = useMemo(() => redeemCodes.filter((item) => !item.redeemedAt), [redeemCodes])
   const exportText = useMemo(() => pendingRedeemCodes.map((item) => [item.code, `${item.points}积分`, `分类:${item.codeCategory}`, item.categoryUserLimit === null ? "分类限额:不限" : `分类限额:${item.categoryUserLimit}`, item.expiresAt ? `过期:${formatDateTime(item.expiresAt)}` : "不过期", item.note ?? ""].filter(Boolean).join("\t")).join("\n"), [pendingRedeemCodes])
 
+  async function reloadRedeemCodes() {
+    const listResponse = await fetch("/api/admin/redeem-codes", { cache: "no-store" })
+    const listResult = await listResponse.json()
+    setRedeemCodes(Array.isArray(listResult.data) ? listResult.data : [])
+  }
 
   async function handleCopyPendingCodes() {
     if (!exportText) {
@@ -74,6 +83,55 @@ export function AdminRedeemCodeManager({ initialRedeemCodes }: AdminRedeemCodeMa
     setFeedback(`已导出 ${pendingRedeemCodes.length} 个未兑换兑换码`)
   }
 
+  async function handleDeleteRedeemCodes(scope: DeleteScope, id?: string) {
+    const affectedCount = scope === "single"
+      ? 1
+      : scope === "used"
+        ? summary.used
+        : scope === "unused"
+          ? summary.unused
+          : summary.total
+
+    if (affectedCount === 0) {
+      setFeedback("没有可删除的兑换码")
+      return
+    }
+
+    const scopeLabel = scope === "single"
+      ? "这个兑换码"
+      : scope === "used"
+        ? `${affectedCount} 个已兑换兑换码`
+        : scope === "unused"
+          ? `${affectedCount} 个未兑换兑换码`
+          : `${affectedCount} 个兑换码`
+
+    if (!await showConfirm({
+      title: "删除兑换码",
+      description: `确定删除${scopeLabel}？删除后不可恢复。已兑换兑换码被删除后，也会影响分类限额统计。`,
+      confirmText: "删除",
+      variant: "danger",
+    })) {
+      return
+    }
+
+    setFeedback("")
+    startTransition(async () => {
+      const response = await fetch("/api/admin/redeem-codes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope, id }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        setFeedback(result.message ?? "删除失败")
+        return
+      }
+
+      await reloadRedeemCodes()
+      setFeedback(result.message ?? "删除成功")
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -100,9 +158,7 @@ export function AdminRedeemCodeManager({ initialRedeemCodes }: AdminRedeemCodeMa
               setFeedback(result.message ?? "生成失败")
               return
             }
-            const listResponse = await fetch("/api/admin/redeem-codes", { cache: "no-store" })
-            const listResult = await listResponse.json()
-            setRedeemCodes(Array.isArray(listResult.data) ? listResult.data : [])
+            await reloadRedeemCodes()
             setFeedback(result.message ?? "生成成功")
           })
         }}
@@ -131,29 +187,42 @@ export function AdminRedeemCodeManager({ initialRedeemCodes }: AdminRedeemCodeMa
         </div>
       </form>
 
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
+        <Button type="button" variant="outline" onClick={() => void handleDeleteRedeemCodes("used")} disabled={isPending || summary.used === 0}>删除已兑换</Button>
+        <Button type="button" variant="outline" onClick={() => void handleDeleteRedeemCodes("unused")} disabled={isPending || summary.unused === 0}>删除未兑换</Button>
+        <Button type="button" variant="destructive" onClick={() => void handleDeleteRedeemCodes("all")} disabled={isPending || summary.total === 0}>删除全部</Button>
+        <span className="text-xs text-muted-foreground">删除已兑换记录会影响分类限额统计。</span>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="grid items-center gap-3 border-b border-border bg-secondary/40 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground lg:grid-cols-[minmax(0,1fr)_90px_180px_160px_180px_minmax(0,1fr)]">
+        <div className="grid items-center gap-3 border-b border-border bg-secondary/40 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground lg:grid-cols-[minmax(0,1fr)_90px_180px_160px_180px_minmax(0,1fr)_72px]">
           <span>兑换码</span>
           <span>积分</span>
           <span>分类策略</span>
           <span>状态</span>
           <span>过期时间</span>
           <span>备注</span>
+          <span>操作</span>
         </div>
 
         {redeemCodes.length === 0 ? <div className="px-4 py-10 text-sm text-muted-foreground">当前还没有兑换码。</div> : null}
         {redeemCodes.map((item) => (
-          <div key={item.id} className="grid items-center gap-3 border-b border-border px-4 py-3 text-xs last:border-b-0 lg:grid-cols-[minmax(0,1fr)_90px_180px_160px_180px_minmax(0,1fr)]">
+          <div key={item.id} className="grid items-center gap-3 border-b border-border px-4 py-3 text-xs last:border-b-0 lg:grid-cols-[minmax(0,1fr)_90px_180px_160px_180px_minmax(0,1fr)_72px]">
             <div className="min-w-0">
               <div className="truncate font-mono text-sm font-medium">{item.code}</div>
               <div className="mt-1 text-muted-foreground">{formatDateTime(item.createdAt)}</div>
             </div>
             <div>{item.points}</div>
             <div className="text-muted-foreground">{item.codeCategory || "default"} / {item.categoryUserLimit == null ? "不限" : `${item.categoryUserLimit}次/人`}</div>
-            <div className="text-muted-foreground">{item.redeemedByUsername ? `已被 ${item.redeemedByUsername} 兑换` : "未兑换"}</div>
+            <div className="text-muted-foreground">{item.redeemedAt ? item.redeemedByUsername ? `已被 ${item.redeemedByUsername} 兑换` : "已兑换" : "未兑换"}</div>
 
             <div className="text-muted-foreground">{item.expiresAt ? formatDateTime(item.expiresAt) : "不过期"}</div>
             <div className="truncate text-muted-foreground">{item.note ?? "-"}</div>
+            <div>
+              <Button type="button" variant="destructive" size="icon-sm" title="删除兑换码" aria-label={`删除兑换码 ${item.code}`} onClick={() => void handleDeleteRedeemCodes("single", item.id)} disabled={isPending}>
+                <Trash2 data-icon="inline-start" />
+              </Button>
+            </div>
           </div>
 
         ))}

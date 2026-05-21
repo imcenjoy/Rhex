@@ -177,6 +177,14 @@ export const defaultSiteSettingsCreateInput = {
       authPageShowcase: {
         enabled: true,
       },
+      smsProvider: {
+        enabled: false,
+        aliyunEndpoint: "dysmsapi.aliyuncs.com",
+        aliyunRegionId: "cn-hangzhou",
+        aliyunSignName: "",
+        aliyunTemplateCode: "",
+        aliyunCodeParamName: "code",
+      },
       leftSidebarDisplay: {
         mode: "DEFAULT",
       },

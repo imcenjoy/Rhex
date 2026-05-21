@@ -54,6 +54,7 @@ const adminSettingsSectionDetails: Record<
       { key: "security", label: "安全" },
       { key: "email-templates", label: "邮件模板" },
       { key: "auth", label: "第三方登录" },
+      { key: "sms", label: "短信配置" },
       { key: "smtp", label: "SMTP 邮件" },
     ],
   },

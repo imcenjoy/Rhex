@@ -17,6 +17,23 @@ export function findUserByEmail(email: string) {
   })
 }
 
+export function findUserByPhone(phone: string) {
+  return prisma.user.findFirst({
+    where: {
+      phone,
+    },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      phone: true,
+      phoneVerifiedAt: true,
+      status: true,
+      lastLoginIp: true,
+    },
+  })
+}
+
 export function updateUserPasswordById(userId: number, passwordHash: string) {
   return prisma.user.update({
     where: { id: userId },
@@ -28,6 +45,7 @@ export function updateUserPasswordById(userId: number, passwordHash: string) {
       id: true,
       username: true,
       email: true,
+      phone: true,
     },
   })
 }

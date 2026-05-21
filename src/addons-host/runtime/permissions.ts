@@ -33,6 +33,7 @@ export const ADDON_RUNTIME_PERMISSIONS = [
   "message:send",
   "notification:create",
   "email:send",
+  "sms:send",
   "follow:user",
   "points:adjust",
   "badge:query",
@@ -42,6 +43,7 @@ export const ADDON_RUNTIME_PERMISSIONS = [
   "auth:integrate",
   "captcha:integrate",
   "payment:integrate",
+  "sms:integrate",
 ] as const
 
 export type AddonRuntimePermission =
@@ -144,6 +146,8 @@ export function resolveAddonSensitivePermissionForProviderKind(kind: string) {
       return "captcha:integrate"
     case "payment":
       return "payment:integrate"
+    case "sms":
+      return "sms:integrate"
     default:
       return null
   }

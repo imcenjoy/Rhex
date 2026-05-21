@@ -40,5 +40,11 @@ export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSetti
   authGithubEnabled: boolean
   authGoogleEnabled: boolean
   authPasskeyEnabled: boolean
+  smsEnabled: boolean
+  smsAliyunEndpoint: string
+  smsAliyunRegionId: string
+  smsAliyunSignName: string
+  smsAliyunTemplateCode: string
+  smsAliyunCodeParamName: string
   smtpEnabled: boolean
 }

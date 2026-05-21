@@ -96,9 +96,9 @@ export function RestrictedPostBlock({ type, postId, blockId, text, html, visible
 
   if (type === "REPLY_UNLOCK") {
     return (
-      <div className="space-y-4 rounded-xl border border-dashed border-sky-300 bg-sky-50 px-5 py-4 text-sm text-sky-900">
-        <div className="space-y-1">
-          <p className="font-medium">回复后可见内容</p>
+      <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border bg-card/70 px-5 py-4 text-sm text-muted-foreground shadow-xs shadow-black/5">
+        <div className="flex flex-col gap-1">
+          <p className="font-medium text-foreground">回复后可见内容</p>
           <p>{isOwnerOrAdmin ? "你是楼主或管理员，可直接查看该内容。" : `当前需要在本帖回复满 ${replyThreshold ?? 1} 次后解锁，你已回复 ${localUserReplyCount} 次。`}</p>
         </div>
         {!currentUserId ? <p>登录后即可参与回复解锁。</p> : null}

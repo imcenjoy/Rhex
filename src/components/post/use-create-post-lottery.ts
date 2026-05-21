@@ -2,6 +2,13 @@
 
 import type { LocalPostDraft } from "@/lib/post-draft"
 import {
+  buildLotteryPrizeDefaultDescription,
+  buildLotteryPrizeDefaultTitle,
+  normalizeLotteryPrizeType,
+  normalizeLotteryVipPlan,
+  type LotteryPrizeTypeValue,
+} from "@/lib/lottery-prizes"
+import {
   buildLotteryConditionItem,
   buildNextLotteryConditionGroupKey,
 } from "@/components/post/create-post-form.shared"
@@ -52,8 +59,47 @@ export function useCreatePostLottery({
   ) {
     updateDraftField(
       "lotteryPrizes",
-      draft.lotteryPrizes.map((item, currentIndex) =>
-        currentIndex === index ? { ...item, [field]: value } : item),
+      draft.lotteryPrizes.map((item, currentIndex) => {
+        if (currentIndex !== index) {
+          return item
+        }
+
+        if (field === "type") {
+          const type = normalizeLotteryPrizeType(value)
+          const pointsAmount = item.pointsAmount || "100"
+          const vipPlan = normalizeLotteryVipPlan(item.vipPlan)
+          const nextPrize = {
+            ...item,
+            type,
+            pointsAmount,
+            vipPlan,
+          }
+
+          return {
+            ...nextPrize,
+            title: nextPrize.title || buildLotteryPrizeDefaultTitle({
+              type,
+              pointsAmount: Number(pointsAmount),
+              vipPlan,
+            }, pointName),
+            description: nextPrize.description || buildLotteryPrizeDefaultDescription({
+              type,
+              pointsAmount: Number(pointsAmount),
+              vipPlan,
+            }, pointName),
+          }
+        }
+
+        if (field === "vipPlan") {
+          return { ...item, vipPlan: normalizeLotteryVipPlan(value) }
+        }
+
+        if (field === "pointsAmount") {
+          return { ...item, pointsAmount: value }
+        }
+
+        return { ...item, [field]: value }
+      }),
     )
   }
 
@@ -61,7 +107,7 @@ export function useCreatePostLottery({
     if (draft.lotteryPrizes.length < 20) {
       updateDraftField("lotteryPrizes", [
         ...draft.lotteryPrizes,
-        { title: "", quantity: "1", description: "" },
+        { title: "", quantity: "1", description: "", type: "MANUAL" as LotteryPrizeTypeValue, pointsAmount: "100", vipPlan: "MONTH" },
       ])
     }
   }

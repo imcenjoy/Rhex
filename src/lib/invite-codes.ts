@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto"
 
-import { countInviteCodesByCreator, createInviteCodesBatch, findInviteCodeByCode, findInviteCodeForUse, findInviteCodeList, findInviteCodesByCodes, findInviteCodesByCreator, findInvitePurchaseUser, findUserInviteResolverById, findUserInviteResolverByUsername } from "@/db/invite-code-queries"
+import { countInviteCodesByCreator, createInviteCodesBatch, deleteInviteCodeById, deleteInviteCodesByScope, findInviteCodeByCode, findInviteCodeForUse, findInviteCodeList, findInviteCodesByCodes, findInviteCodesByCreator, findInvitePurchaseUser, findUserInviteResolverById, findUserInviteResolverByUsername } from "@/db/invite-code-queries"
 import { purchaseInviteCodeTransaction } from "@/db/invite-code-write-queries"
 import { apiError } from "@/lib/api-route"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -95,6 +95,21 @@ export async function getInviteCodeList(limit = 100): Promise<InviteCodeItem[]> 
     usedByUsername: row.usedBy?.username ?? null,
     note: row.note,
   }))
+}
+
+export async function deleteInviteCodes(input: { scope: "single" | "used" | "unused" | "all"; id?: string }) {
+  if (input.scope === "single") {
+    const id = input.id?.trim()
+    if (!id) {
+      apiError(400, "请选择要删除的邀请码")
+    }
+
+    const result = await deleteInviteCodeById(id)
+    return result.count
+  }
+
+  const result = await deleteInviteCodesByScope(input.scope)
+  return result.count
 }
 
 export async function getPurchasedInviteCodePage(userId: number, options?: { page?: number; pageSize?: number }): Promise<InviteCodePageData> {

@@ -91,6 +91,17 @@ export async function findEditablePostBySlug(slug: string) {
           sortOrder: "asc",
         },
       },
+      lotteryPrizes: {
+        orderBy: {
+          sortOrder: "asc",
+        },
+      },
+      lotteryConditions: {
+        orderBy: [
+          { groupKey: "asc" },
+          { sortOrder: "asc" },
+        ],
+      },
       redPacket: true,
       auction: true,
       tags: {

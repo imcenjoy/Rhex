@@ -1,5 +1,5 @@
 import {
-  listAllRssQueueItems,
+  listRssQueueItemsBySource,
   type RssQueueRecord,
 } from "@/lib/rss-harvest-queue-store"
 import { connectRedisClient, createRedisKey, getRedis } from "@/lib/redis"
@@ -29,6 +29,7 @@ export interface RssSourceRuntimeStatePatch {
 }
 
 const RSS_SOURCE_RUNTIME_STATE_KEY = createRedisKey(...REDIS_KEY_SCOPES.rssHarvest.sourceRuntimeItems)
+const RSS_RUNTIME_STATE_DERIVATION_QUEUE_LIMIT = 200
 
 function toDate(value: string | null | undefined) {
   if (!value) {
@@ -200,12 +201,12 @@ export async function listRssSourceRuntimeStates(sourceIds: string[], options?: 
     return map
   })()
   if (!options?.queueItemsBySource) {
-    const allQueueItems = await listAllRssQueueItems()
-    for (const item of allQueueItems) {
-      const items = resolvedQueueItemsBySource.get(item.sourceId) ?? []
-      items.push(item)
-      resolvedQueueItemsBySource.set(item.sourceId, items)
-    }
+    await Promise.all(missingSourceIds.map(async (sourceId) => {
+      resolvedQueueItemsBySource.set(
+        sourceId,
+        await listRssQueueItemsBySource(sourceId, RSS_RUNTIME_STATE_DERIVATION_QUEUE_LIMIT),
+      )
+    }))
   }
 
   const derivedStates = missingSourceIds.map((sourceId) => applyRuntimePatch(

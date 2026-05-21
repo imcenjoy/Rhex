@@ -87,6 +87,9 @@ export function findUserLoginCandidate(login: string, client?: DbClient) {
             mode: "insensitive",
           },
         },
+        {
+          phone: login,
+        },
       ],
     },
     select: {

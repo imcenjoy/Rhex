@@ -30,6 +30,47 @@ export const runtime = "nodejs"
 const HEARTBEAT_INTERVAL_MS = 15_000
 const MESSAGE_CATCH_UP_BATCH_SIZE = 50
 
+type HeartbeatWriter = (payload: string) => void
+
+type GlobalMessageStreamState = {
+  __bbsMessageStreamHeartbeat?: {
+    writers: Set<HeartbeatWriter>
+    timer: ReturnType<typeof setInterval> | null
+  }
+}
+
+const globalMessageStreamState = globalThis as typeof globalThis & GlobalMessageStreamState
+
+function getSharedHeartbeatState() {
+  globalMessageStreamState.__bbsMessageStreamHeartbeat ??= {
+    writers: new Set(),
+    timer: null,
+  }
+  return globalMessageStreamState.__bbsMessageStreamHeartbeat
+}
+
+function subscribeSharedHeartbeat(writer: HeartbeatWriter) {
+  const state = getSharedHeartbeatState()
+  state.writers.add(writer)
+
+  if (!state.timer) {
+    state.timer = setInterval(() => {
+      const payload = buildHeartbeatPayload()
+      for (const heartbeatWriter of state.writers) {
+        heartbeatWriter(payload)
+      }
+    }, HEARTBEAT_INTERVAL_MS)
+  }
+
+  return () => {
+    state.writers.delete(writer)
+    if (state.writers.size === 0 && state.timer) {
+      clearInterval(state.timer)
+      state.timer = null
+    }
+  }
+}
+
 interface MessageStreamEventEnvelope {
   cursor: MessageStreamCursor
   event: MessageStreamEvent
@@ -205,6 +246,7 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
     ? requestedCursor ?? await findLatestCursor(currentUser.id)
     : null
   const encoder = new TextEncoder()
+  let closeStream: (() => void) | null = null
 
   const stream = new ReadableStream({
     start(controller) {
@@ -212,14 +254,18 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
       let cursor = initialCursor
       let unsubscribeMessageEvents: (() => void) | null = null
       let unsubscribeNotificationEvents: (() => void) | null = null
-      let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+      let unsubscribeHeartbeat: (() => void) | null = null
       let catchUpReady = false
       const bufferedCursorEvents: MessageStreamEventEnvelope[] = []
       const bufferedLiveEvents: MessageStreamEvent[] = []
 
       const push = (payload: string) => {
         if (!closed) {
-          controller.enqueue(encoder.encode(payload))
+          try {
+            controller.enqueue(encoder.encode(payload))
+          } catch {
+            close()
+          }
         }
       }
 
@@ -301,13 +347,16 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
         }
 
         closed = true
+        closeStream = null
         request.signal.removeEventListener("abort", close)
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer)
-        }
+        unsubscribeHeartbeat?.()
         unsubscribeMessageEvents?.()
         unsubscribeNotificationEvents?.()
-        controller.close()
+        try {
+          controller.close()
+        } catch {
+          // The browser may already have closed the stream.
+        }
       }
 
       const handleStreamFailure = (error: unknown) => {
@@ -372,11 +421,10 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
         pushCursor(cursor)
       }
 
-      heartbeatTimer = setInterval(() => {
-        push(buildHeartbeatPayload())
-      }, HEARTBEAT_INTERVAL_MS)
+      unsubscribeHeartbeat = subscribeSharedHeartbeat(push)
 
       request.signal.addEventListener("abort", close)
+      closeStream = close
 
       void drainCatchUp()
         .then(() => {
@@ -389,6 +437,8 @@ export const GET = createUserRouteHandler(async ({ request, currentUser }) => {
         .catch(handleStreamFailure)
     },
     cancel() {
+      closeStream?.()
+      closeStream = null
       return
     },
   })

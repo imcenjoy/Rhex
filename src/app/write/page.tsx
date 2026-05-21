@@ -181,6 +181,9 @@ export default async function WritePage(props: PageProps<"/write">) {
                     addonCaptcha={<AddonSlotRenderer slot="post.create.captcha" />}
                     anonymousPostEnabled={settings.anonymousPostEnabled}
                     anonymousPostPrice={settings.anonymousPostPrice}
+                    vipMonthlyPrice={settings.vipMonthlyPrice}
+                    vipQuarterlyPrice={settings.vipQuarterlyPrice}
+                    vipYearlyPrice={settings.vipYearlyPrice}
                     markdownEmojiMap={settings.markdownEmojiMap}
                     currentUser={{
                       username: user.username,
@@ -233,6 +236,28 @@ export default async function WritePage(props: PageProps<"/write">) {
                         }
                       : undefined,
                     pollOptions: editingPost.pollOptions.map((item) => item.content),
+                    lotteryConfig: editingPost.type === "LOTTERY"
+                      ? {
+                          startsAt: editingPost.lotteryStartsAt?.toISOString() ?? null,
+                          endsAt: editingPost.lotteryEndsAt?.toISOString() ?? null,
+                          participantGoal: editingPost.lotteryParticipantGoal,
+                          prizes: editingPost.lotteryPrizes.map((prize) => ({
+                            title: prize.title,
+                            quantity: prize.quantity,
+                            description: prize.description,
+                            type: prize.type,
+                            pointsAmount: prize.pointsAmount,
+                            vipPlan: prize.vipPlan,
+                          })),
+                          conditions: editingPost.lotteryConditions.map((condition) => ({
+                            type: condition.type,
+                            value: condition.value,
+                            operator: condition.operator,
+                            description: condition.description ?? undefined,
+                            groupKey: condition.groupKey,
+                          })),
+                        }
+                      : undefined,
                     tags: editingPost.tags.map((item) => item.tag.name),
                     attachments: editingPost.attachments.map((attachment) => ({
                       id: attachment.id,
@@ -290,6 +315,9 @@ export default async function WritePage(props: PageProps<"/write">) {
                   {...addonFormSlots}
                   anonymousPostEnabled={settings.anonymousPostEnabled}
                   anonymousPostPrice={settings.anonymousPostPrice}
+                  vipMonthlyPrice={settings.vipMonthlyPrice}
+                  vipQuarterlyPrice={settings.vipQuarterlyPrice}
+                  vipYearlyPrice={settings.vipYearlyPrice}
                   postRedPacketEnabled={settings.postRedPacketEnabled}
                   postRedPacketMaxPoints={settings.postRedPacketMaxPoints}
                   postJackpotEnabled={settings.postJackpotEnabled}

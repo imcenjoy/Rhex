@@ -4,6 +4,8 @@ import {
 
   countRedeemedCodesByUserCategoryWithTx,
   createRedeemCodeRecords,
+  deleteRedeemCodeById,
+  deleteRedeemCodesByScope,
   findRedeemCodeByCode,
   findRedeemCodeByCodeWithTx,
   findUserBaseById,
@@ -182,6 +184,21 @@ export async function getRedeemCodeList(limit = 100): Promise<RedeemCodeItem[]> 
   const rows = await listRedeemCodes(limit)
 
   return rows.map((row) => toRedeemCodeItem(row as RedeemCodeRowWithRelations))
+}
+
+export async function deleteRedeemCodes(input: { scope: "single" | "used" | "unused" | "all"; id?: string }) {
+  if (input.scope === "single") {
+    const id = input.id?.trim()
+    if (!id) {
+      throwRedeemCodeError("请选择要删除的兑换码")
+    }
+
+    const result = await deleteRedeemCodeById(id)
+    return result.count
+  }
+
+  const result = await deleteRedeemCodesByScope(input.scope)
+  return result.count
 }
 
 

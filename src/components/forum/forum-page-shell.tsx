@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import type { LeftSidebarDisplayMode } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 import {
+  getSidebarNavigationDisplayModeAttribute,
   readSidebarNavigationCollapsedSnapshot,
   setSidebarNavigationCollapsedPreference,
   subscribeSidebarNavigationPreference,
@@ -153,7 +154,7 @@ export function ForumPageShell({
 
       <div
         className="forum-page-shell grid grid-cols-1 gap-6"
-        data-sidebar-display-mode={resolvedLeftSidebarDisplayMode.toLowerCase()}
+        data-sidebar-display-mode={getSidebarNavigationDisplayModeAttribute(resolvedLeftSidebarDisplayMode)}
         data-has-right-sidebar={hasRightSidebar ? "true" : "false"}
       >
         <SidebarNavigation

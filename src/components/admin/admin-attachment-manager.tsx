@@ -175,8 +175,8 @@ export function AdminAttachmentManager({ data }: AdminAttachmentManagerProps) {
       <AdminSummaryStrip
         items={[
           { label: "上传资源", value: data.summary.total, icon: <FileArchive className="h-4 w-4" /> },
-          { label: "已引用", value: data.summary.referenced, tone: "emerald", hint: "含内容、头像、附件等引用" },
-          { label: "无引用", value: data.summary.orphan, tone: data.summary.orphan > 0 ? "amber" : "slate", hint: "可先扫描再清理" },
+          { label: "本页已引用", value: data.summary.referenced, tone: "emerald", hint: "当前页含内容、头像、附件等引用" },
+          { label: "本页无引用", value: data.summary.orphan, tone: data.summary.orphan > 0 ? "amber" : "slate", hint: "全量清理请先扫描" },
           { label: "占用空间", value: formatFileSize(data.summary.totalBytes), tone: "sky", hint: "当前筛选结果合计" },
         ]}
       />
@@ -236,7 +236,7 @@ export function AdminAttachmentManager({ data }: AdminAttachmentManagerProps) {
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               扫描无引用
             </Button>
-            <Button type="button" variant="destructive" className="rounded-full" disabled={isPending || data.summary.orphan === 0} onClick={() => runCleanup(false)}>
+            <Button type="button" variant="destructive" className="rounded-full" disabled={isPending || data.pagination.total === 0} onClick={() => runCleanup(false)}>
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               清理无引用
             </Button>

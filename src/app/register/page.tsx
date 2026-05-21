@@ -100,7 +100,7 @@ export default async function RegisterPage(props: PageProps<"/register">) {
     <AuthShell
       showcaseName={settings.siteName}
       showShowcase={settings.authPageShowcaseEnabled}
-      panelTitle="创建论坛账户"
+      panelTitle="创建账户"
       panelDescription="花一分钟创建账户，马上开始你的浏览、回复和收藏。"
       panelBefore={<AddonSlotRenderer slot="auth.register.panel.before" props={registerSlotProps} />}
       panelAfter={<AddonSlotRenderer slot="auth.register.panel.after" props={registerSlotProps} />}

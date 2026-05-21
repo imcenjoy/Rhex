@@ -21,9 +21,9 @@ import { parseMarkdownEmojiMapJson } from "@/lib/markdown-emoji"
 import { normalizeCommentLoadMode } from "@/lib/comment-load-mode"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveMarkdownImageUploadSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
+import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveMarkdownImageUploadSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthPageShowcaseSettings } from "@/lib/site-settings-app-state"
-import { resolveAuthProviderSensitiveConfig, resolveCaptchaSensitiveConfig, resolveUploadStorageSensitiveConfig } from "@/lib/site-settings-sensitive-state"
+import { resolveAuthProviderSensitiveConfig, resolveCaptchaSensitiveConfig, resolveSmsSensitiveConfig, resolveUploadStorageSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { resolveSiteSearchSettings } from "@/lib/site-search-settings"
 import { normalizePositiveInteger } from "@/lib/shared/normalizers"
 import type { SiteSettingsRecordData } from "@/lib/site-settings.record"
@@ -344,6 +344,9 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     appStateJson: record.appStateJson,
     enabledFallback: true,
   })
+  const smsProviderSettings = resolveSmsProviderSettings({
+    appStateJson: record.appStateJson,
+  })
   const postJackpotSettings = resolvePostJackpotSettings({
     appStateJson: record.appStateJson,
     enabledFallback: false,
@@ -385,6 +388,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
   })
   const authProviderSensitiveConfig = resolveAuthProviderSensitiveConfig(record.sensitiveStateJson)
   const captchaSensitiveConfig = resolveCaptchaSensitiveConfig(record.sensitiveStateJson)
+  const smsSensitiveConfig = resolveSmsSensitiveConfig(record.sensitiveStateJson)
   const uploadStorageSensitiveConfig = resolveUploadStorageSensitiveConfig(record.sensitiveStateJson)
 
   return {
@@ -549,6 +553,14 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     authGithubEnabled: authProviderSettings.githubEnabled,
     authGoogleEnabled: authProviderSettings.googleEnabled,
     authPasskeyEnabled: authProviderSettings.passkeyEnabled,
+    smsEnabled: smsProviderSettings.enabled,
+    smsAliyunEndpoint: smsProviderSettings.aliyunEndpoint,
+    smsAliyunRegionId: smsProviderSettings.aliyunRegionId,
+    smsAliyunSignName: smsProviderSettings.aliyunSignName,
+    smsAliyunTemplateCode: smsProviderSettings.aliyunTemplateCode,
+    smsAliyunCodeParamName: smsProviderSettings.aliyunCodeParamName,
+    smsAliyunAccessKeyId: smsSensitiveConfig.aliyunAccessKeyId,
+    smsAliyunAccessKeySecret: smsSensitiveConfig.aliyunAccessKeySecret,
     githubClientId: authProviderSensitiveConfig.githubClientId,
     githubClientSecret: authProviderSensitiveConfig.githubClientSecret,
     googleClientId: authProviderSensitiveConfig.googleClientId,
@@ -653,6 +665,8 @@ function toPublicSiteSettings(data: ServerSiteSettingsData): SiteSettingsData {
     turnstileSecretKey,
     uploadS3AccessKeyId,
     uploadS3SecretAccessKey,
+    smsAliyunAccessKeyId,
+    smsAliyunAccessKeySecret,
     smtpHost,
     smtpPort,
     smtpUser,
@@ -671,6 +685,8 @@ function toPublicSiteSettings(data: ServerSiteSettingsData): SiteSettingsData {
   void turnstileSecretKey
   void uploadS3AccessKeyId
   void uploadS3SecretAccessKey
+  void smsAliyunAccessKeyId
+  void smsAliyunAccessKeySecret
   void smtpHost
   void smtpPort
   void smtpUser

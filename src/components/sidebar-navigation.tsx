@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react"
 import { LevelIcon } from "@/components/level-icon"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { LeftSidebarDisplayMode } from "@/lib/site-settings"
+import { getSidebarNavigationDisplayModeAttribute } from "@/lib/sidebar-navigation-preference"
 import { cn } from "@/lib/utils"
 
 interface SidebarZoneItem {
@@ -56,7 +57,7 @@ export function SidebarNavigation({
     return null
   }
 
-  const isDocked = displayMode === "DOCKED"
+  const isDocked = displayMode === "DOCKED" || displayMode === "DOCKED_OPEN"
   const baseItemClass = "flex items-center gap-3 rounded-md px-4 py-2 text-[0.933rem] leading-5 transition-colors"
   const activeItemClass = "bg-[linear-gradient(135deg,rgba(255,255,255,0.1)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.08)_50%,rgba(255,255,255,0.08)_75%,transparent_75%,transparent)] bg-size-[8px_8px] font-medium text-foreground"
   const inactiveItemClass = "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -68,7 +69,7 @@ export function SidebarNavigation({
         "forum-page-sidebar hidden lg:-ml-2 lg:block",
         isDocked && "forum-page-sidebar-docked lg:ml-0",
       )}
-      data-sidebar-display-mode={displayMode.toLowerCase()}
+      data-sidebar-display-mode={getSidebarNavigationDisplayModeAttribute(displayMode)}
     >
       {isDocked ? (
         <button

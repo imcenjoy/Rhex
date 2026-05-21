@@ -31,6 +31,7 @@ class NotificationEventBus {
   private nextSubscriberId = 1
 
   private readonly subscribers = new Map<number, NotificationEventSubscriber>()
+  private readonly subscriberIdsByUserId = new Map<number, Set<number>>()
 
   subscribe(userId: number, listener: NotificationEventListener) {
     void ensureNotificationEventBusRuntimeReady()
@@ -38,9 +39,16 @@ class NotificationEventBus {
     const subscriberId = this.nextSubscriberId
     this.nextSubscriberId += 1
     this.subscribers.set(subscriberId, { userId, listener })
+    const userSubscriberIds = this.subscriberIdsByUserId.get(userId) ?? new Set<number>()
+    userSubscriberIds.add(subscriberId)
+    this.subscriberIdsByUserId.set(userId, userSubscriberIds)
 
     return () => {
       this.subscribers.delete(subscriberId)
+      userSubscriberIds.delete(subscriberId)
+      if (userSubscriberIds.size === 0) {
+        this.subscriberIdsByUserId.delete(userId)
+      }
     }
   }
 
@@ -65,8 +73,14 @@ class NotificationEventBus {
   }
 
   publishLocal(event: NotificationCountStreamEvent) {
-    for (const subscriber of this.subscribers.values()) {
-      if (subscriber.userId !== event.userId) {
+    const subscriberIds = this.subscriberIdsByUserId.get(event.userId)
+    if (!subscriberIds) {
+      return
+    }
+
+    for (const subscriberId of subscriberIds) {
+      const subscriber = this.subscribers.get(subscriberId)
+      if (!subscriber) {
         continue
       }
 

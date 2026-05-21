@@ -53,6 +53,7 @@ export const PROFILE_LEFT_SIDEBAR_DISPLAY_MODE_OPTIONS = [
   { value: "DEFAULT", label: "默认展示（当前样式）" },
   { value: "HIDDEN", label: "隐藏左侧导航" },
   { value: "DOCKED", label: "吸附左侧并默认隐藏" },
+  { value: "DOCKED_OPEN", label: "吸附左侧并默认打开" },
 ] as const
 
 export const INTERNAL_SETTING_TABS: Record<
@@ -73,6 +74,7 @@ export const INTERNAL_SETTING_TABS: Record<
     { key: "security", label: "安全" },
     { key: "email-templates", label: "邮件模板" },
     { key: "auth", label: "第三方登录" },
+    { key: "sms", label: "短信配置" },
     { key: "smtp", label: "SMTP 邮件" },
   ],
   interaction: [

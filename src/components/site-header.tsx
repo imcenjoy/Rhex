@@ -89,7 +89,9 @@ export async function SiteHeader() {
 
               <div className="ml-auto flex h-14 items-center gap-1.5">
                 <AddonSlotRenderer slot="layout.header.right" props={{ settings }} />
-                <HeaderTopAppNavigation links={settings.topHeaderAppLinks} />
+                <Suspense fallback={null}>
+                  <HeaderTopAppNavigation links={settings.topHeaderAppLinks} />
+                </Suspense>
                 <ThemeToggle />
                 <HeaderUserActions messageEnabled={settings.messageEnabled} />
               </div>

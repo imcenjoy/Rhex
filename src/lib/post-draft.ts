@@ -29,7 +29,7 @@ export interface LocalPostDraft {
   lotteryStartsAt: string
   lotteryEndsAt: string
   lotteryParticipantGoal: string
-  lotteryPrizes: Array<{ title: string; quantity: string; description: string }>
+  lotteryPrizes: Array<{ title: string; quantity: string; description: string; type: "MANUAL" | "POINTS" | "VIP"; pointsAmount: string; vipPlan: "MONTH" | "QUARTER" | "YEAR" }>
   lotteryConditions: Array<{ type: string; value: string; operator: string; description: string; groupKey: string }>
   redPacketEnabled: boolean
   redPacketMode: "RED_PACKET" | "JACKPOT"
@@ -110,7 +110,7 @@ export function createEmptyLocalPostDraft(boardSlug = ""): LocalPostDraft {
     lotteryStartsAt: "",
     lotteryEndsAt: "",
     lotteryParticipantGoal: "",
-    lotteryPrizes: [{ title: "一等奖", quantity: "1", description: "填写奖品描述" }],
+    lotteryPrizes: [{ title: "一等奖", quantity: "1", description: "填写奖品描述", type: "MANUAL", pointsAmount: "100", vipPlan: "MONTH" }],
     lotteryConditions: [{ type: "REPLY_CONTENT_LENGTH", value: "10", operator: "GTE", description: "回帖内容至少 10 字", groupKey: "default" }],
     redPacketEnabled: false,
     redPacketMode: "RED_PACKET",

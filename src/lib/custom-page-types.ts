@@ -1,3 +1,7 @@
+export const BUILTIN_CUSTOM_PAGE_ROUTE_PATHS = ["/about", "/terms"] as const
+
+const BUILTIN_CUSTOM_PAGE_ROUTE_PATH_SET = new Set<string>(BUILTIN_CUSTOM_PAGE_ROUTE_PATHS)
+
 const CUSTOM_PAGE_RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "_addons",
   "about",
@@ -111,6 +115,11 @@ export function isReservedCustomPageRoutePath(routePath: string) {
 
   const [topLevelSegment] = normalized.slice(1).split("/", 1)
   return CUSTOM_PAGE_RESERVED_TOP_LEVEL_SEGMENTS.has(topLevelSegment)
+}
+
+export function isBuiltinCustomPageRoutePath(routePath: string) {
+  const normalized = normalizeCustomPageRoutePath(routePath)
+  return BUILTIN_CUSTOM_PAGE_ROUTE_PATH_SET.has(normalized)
 }
 
 export function stripCustomPageHtmlToText(html: string, maxLength = 180) {

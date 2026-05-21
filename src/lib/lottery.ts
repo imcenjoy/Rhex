@@ -18,7 +18,16 @@ import { isPublicReadablePostStatus } from "@/lib/post-types"
 
 
 import { formatDateTime, parseBusinessDateTime } from "@/lib/formatters"
+import {
+  buildLotteryPrizeDefaultDescription,
+  buildLotteryPrizeDefaultTitle,
+  normalizeLotteryPrizeType,
+  normalizeLotteryVipPlan,
+  type LotteryPrizeTypeValue,
+  type LotteryVipPlanValue,
+} from "@/lib/lottery-prizes"
 import { getServerSiteSettings } from "@/lib/site-settings"
+import { revalidateUserSurfaceCache } from "@/lib/user-surface"
 
 
 
@@ -42,6 +51,9 @@ export interface LotteryPrizeInput {
   title: string
   description: string
   quantity: number
+  type: LotteryPrizeTypeValue
+  pointsAmount: number | null
+  vipPlan: LotteryVipPlanValue | null
 }
 
 export interface LotteryConfigInput {
@@ -93,6 +105,9 @@ export interface LotteryViewModel {
     title: string
     description: string
     quantity: number
+    type: LotteryPrizeTypeValue
+    pointsAmount: number | null
+    vipPlan: LotteryVipPlanValue | null
     winnerCount: number
     winners: Array<{
       userId: number
@@ -128,6 +143,10 @@ interface LotteryPostRelations extends Post {
     title: string
     description: string
     quantity: number
+    type: LotteryPrizeTypeValue
+    pointsAmount: number | null
+    vipPlan: LotteryVipPlanValue | null
+    unitCostPoints: number
     sortOrder: number
     winners: Array<{
       userId: number
@@ -216,12 +235,29 @@ export function normalizeLotteryConfig(raw: unknown): { success: boolean; messag
   const payload = (raw ?? {}) as Record<string, unknown>
   const prizes = Array.isArray(payload.prizes)
     ? payload.prizes
-        .map((item) => ({
-          title: String((item as Record<string, unknown> | null)?.title ?? "").trim(),
-          description: String((item as Record<string, unknown> | null)?.description ?? "").trim(),
-          quantity: normalizeInteger((item as Record<string, unknown> | null)?.quantity ?? 0),
-        }))
-        .filter((item) => item.title || item.description || item.quantity > 0)
+        .map((item) => {
+          const rawItem = item as Record<string, unknown> | null
+          const type = normalizeLotteryPrizeType(rawItem?.type)
+          const pointsAmount = type === "POINTS"
+            ? normalizeInteger(rawItem?.pointsAmount ?? rawItem?.amount ?? 0)
+            : null
+          const vipPlan = type === "VIP" ? normalizeLotteryVipPlan(rawItem?.vipPlan) : null
+          const prize = {
+            title: String(rawItem?.title ?? "").trim(),
+            description: String(rawItem?.description ?? "").trim(),
+            quantity: normalizeInteger(rawItem?.quantity ?? 0),
+            type,
+            pointsAmount,
+            vipPlan,
+          }
+
+          return {
+            ...prize,
+            title: prize.title || buildLotteryPrizeDefaultTitle(prize),
+            description: prize.description || buildLotteryPrizeDefaultDescription(prize),
+          }
+        })
+        .filter((item) => item.title || item.description || item.quantity > 0 || item.type !== "MANUAL")
     : []
 
   const conditions = Array.isArray(payload.conditions)
@@ -253,6 +289,19 @@ export function normalizeLotteryConfig(raw: unknown): { success: boolean; messag
 
   if (prizes.some((item) => !item.title || item.title.length > 40 || !item.description || item.description.length > 200 || item.quantity < 1 || item.quantity > 1000)) {
     return { success: false, message: "奖项名称、描述或数量不合法" }
+  }
+
+  for (const prize of prizes) {
+    if (prize.type === "POINTS") {
+      if (!Number.isInteger(prize.pointsAmount) || (prize.pointsAmount ?? 0) < 1 || (prize.pointsAmount ?? 0) > 100000) {
+        return { success: false, message: "积分奖品额度需为 1-100000 的整数" }
+      }
+      continue
+    }
+
+    if (prize.type === "VIP" && !prize.vipPlan) {
+      return { success: false, message: "会员权益奖品配置不合法" }
+    }
   }
 
   if (conditions.length === 0) {
@@ -577,6 +626,10 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
     apiError(409, "该抽奖已开奖")
   }
 
+  if (post.lotteryStatus === LotteryStatus.DRAWN && options?.force && post.lotteryPrizes.some((prize) => prize.type !== "MANUAL")) {
+    apiError(409, "已自动发放站内奖品的抽奖不可重新开奖")
+  }
+
   if (post.lotteryTriggerMode === LotteryTriggerMode.MANUAL && !options?.force) {
     if (!post.lotteryEndsAt || post.lotteryEndsAt.getTime() > Date.now()) {
       apiError(409, "未到结束时间，暂不可开奖")
@@ -635,6 +688,7 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
     prizes: prizeSummary,
     drawnAt: lockedAt,
   })
+  const settings = await getServerSiteSettings()
 
   const updated = await executeLotteryDrawTransaction({
     post,
@@ -642,6 +696,7 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
     winnersToCreate,
     actorId: options?.actorId,
     announcement,
+    prizeCostSettings: settings,
   })
 
 
@@ -655,6 +710,10 @@ export async function drawLotteryWinners(postId: string, options?: { force?: boo
       prizeTitle: winner.prize.title,
     })),
   })
+
+  for (const userId of updated.affectedUserIds) {
+    revalidateUserSurfaceCache(userId)
+  }
 
   return {
     drawnAt: lockedAt,
@@ -737,6 +796,9 @@ export function mapLotteryView(post: LotteryPostRelations, currentUserId?: numbe
         title: prize.title,
         description: prize.description,
         quantity: prize.quantity,
+        type: prize.type,
+        pointsAmount: prize.pointsAmount,
+        vipPlan: prize.vipPlan,
         winnerCount: prize.winners.length,
         winners: prize.winners.map((winner) => ({
           userId: winner.userId,

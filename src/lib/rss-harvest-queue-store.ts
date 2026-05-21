@@ -70,6 +70,8 @@ export interface UpdateRssQueueRecordInput {
 const RSS_QUEUE_ITEMS_KEY = createRedisKey("rss-harvest", "queue", "items")
 const RSS_QUEUE_INDEX_KEY = createRedisKey("rss-harvest", "queue", "index")
 const RSS_QUEUE_STATUS_MIGRATION_KEY = createRedisKey("rss-harvest", "queue", "migration", "byStatus-v1")
+const RSS_QUEUE_EXECUTION_INDEX_KEY = createRedisKey("rss-harvest", "queue", "execution")
+const RSS_QUEUE_EXECUTION_MIGRATION_KEY = createRedisKey("rss-harvest", "queue", "migration", "byExecution-v1")
 const RSS_QUEUE_STATUSES = ["PENDING", "PROCESSING", "SUCCEEDED", "FAILED", "CANCELLED"] as const satisfies readonly RssQueueStatusValue[]
 const RSS_QUEUE_RETENTION_SECONDS = Math.max(
   300,
@@ -112,53 +114,80 @@ function getStatusQueueIndexKey(status: RssQueueStatusValue) {
   return createRedisKey("rss-harvest", "queue", "byStatus", status)
 }
 
+function getSourceExecutionQueueIndexKey(sourceId: string) {
+  return createRedisKey("rss-harvest", "queue", "sourceExecution", sourceId)
+}
+
 /**
- * 一次性回填 byStatus ZSET 索引（从旧版升级时使用）。
- * 使用 SET NX 保证幂等；失败时清除 marker 以便下次重试。
+ * 旧数据索引回填只在每次读路径上推进一个小批次，避免管理页加载时扫完整个队列。
  */
-async function ensureStatusIndexesBackfilled(redis: RedisQueueConnection) {
-  const acquired = await redis.set(RSS_QUEUE_STATUS_MIGRATION_KEY, "1", "NX").catch(() => null)
-  if (acquired !== "OK") {
+async function backfillRedisQueueIndexBatch(
+  redis: RedisQueueConnection,
+  markerKey: string,
+  applyPairs: (pairs: Array<{ id: string; score: string }>, values: Array<string | null>) => Promise<void>,
+) {
+  const marker = await redis.get(markerKey).catch(() => null)
+  if (marker === "1" || marker === "done") {
     return
   }
-  try {
-    let start = 0
-    while (true) {
-      const raw = await redis.zrange(RSS_QUEUE_INDEX_KEY, start, start + REDIS_QUEUE_PRUNE_BATCH_SIZE - 1, "WITHSCORES").catch(() => [] as string[])
-      if (raw.length === 0) {
-        return
-      }
-      const pairs: Array<{ id: string; score: string }> = []
-      for (let i = 0; i + 1 < raw.length; i += 2) {
-        pairs.push({ id: raw[i]!, score: raw[i + 1]! })
-      }
-      if (pairs.length === 0) {
-        return
-      }
-      const values = await redis.hmget(RSS_QUEUE_ITEMS_KEY, ...pairs.map((p) => p.id))
-      const multi = redis.multi()
-      for (let i = 0; i < pairs.length; i += 1) {
-        const rawValue = values[i]
-        if (!rawValue) continue
-        try {
-          const record = JSON.parse(rawValue) as { status?: RssQueueStatusValue }
-          if (record.status && (RSS_QUEUE_STATUSES as readonly string[]).includes(record.status)) {
-            multi.zadd(getStatusQueueIndexKey(record.status), pairs[i]!.score, pairs[i]!.id)
-          }
-        } catch {
-          // ignore corrupt row
-        }
-      }
-      await multi.exec()
-      if (pairs.length < REDIS_QUEUE_PRUNE_BATCH_SIZE) {
-        return
-      }
-      start += REDIS_QUEUE_PRUNE_BATCH_SIZE
-    }
-  } catch (err) {
-    await redis.del(RSS_QUEUE_STATUS_MIGRATION_KEY).catch(() => {})
-    throw err
+
+  const start = Math.max(0, Number.parseInt(marker ?? "0", 10) || 0)
+  const raw = await redis.zrange(RSS_QUEUE_INDEX_KEY, start, start + REDIS_QUEUE_PRUNE_BATCH_SIZE - 1, "WITHSCORES").catch(() => [] as string[])
+  if (raw.length === 0) {
+    await redis.set(markerKey, "done").catch(() => null)
+    return
   }
+
+  const pairs: Array<{ id: string; score: string }> = []
+  for (let i = 0; i + 1 < raw.length; i += 2) {
+    pairs.push({ id: raw[i]!, score: raw[i + 1]! })
+  }
+  if (pairs.length === 0) {
+    await redis.set(markerKey, "done").catch(() => null)
+    return
+  }
+
+  const values = await redis.hmget(RSS_QUEUE_ITEMS_KEY, ...pairs.map((p) => p.id))
+  await applyPairs(pairs, values)
+
+  if (pairs.length < REDIS_QUEUE_PRUNE_BATCH_SIZE) {
+    await redis.set(markerKey, "done").catch(() => null)
+  } else {
+    await redis.set(markerKey, String(start + pairs.length)).catch(() => null)
+  }
+}
+
+async function ensureStatusIndexesBackfilled(redis: RedisQueueConnection) {
+  await backfillRedisQueueIndexBatch(redis, RSS_QUEUE_STATUS_MIGRATION_KEY, async (pairs, values) => {
+    const multi = redis.multi()
+    for (let i = 0; i < pairs.length; i += 1) {
+      const rawValue = values[i]
+      if (!rawValue) continue
+      try {
+        const record = JSON.parse(rawValue) as { status?: RssQueueStatusValue }
+        if (record.status && (RSS_QUEUE_STATUSES as readonly string[]).includes(record.status)) {
+          multi.zadd(getStatusQueueIndexKey(record.status), pairs[i]!.score, pairs[i]!.id)
+        }
+      } catch {
+        // ignore corrupt row
+      }
+    }
+    await multi.exec()
+  })
+}
+
+async function ensureExecutionIndexesBackfilled(redis: RedisQueueConnection) {
+  await backfillRedisQueueIndexBatch(redis, RSS_QUEUE_EXECUTION_MIGRATION_KEY, async (_pairs, values) => {
+    const multi = redis.multi()
+    for (const rawValue of values) {
+      const record = parseRecord(rawValue)
+      if (!record?.startedAt) continue
+      const score = String(record.startedAt.getTime())
+      multi.zadd(RSS_QUEUE_EXECUTION_INDEX_KEY, score, record.id)
+      multi.zadd(getSourceExecutionQueueIndexKey(record.sourceId), score, record.id)
+    }
+    await multi.exec()
+  })
 }
 
 function toDate(value: string | null | undefined) {
@@ -265,6 +294,8 @@ async function removeRedisRecord(redis: RedisQueueConnection, record: RssQueueRe
     .hdel(RSS_QUEUE_ITEMS_KEY, record.id)
     .zrem(RSS_QUEUE_INDEX_KEY, record.id)
     .zrem(getSourceQueueIndexKey(record.sourceId), record.id)
+    .zrem(RSS_QUEUE_EXECUTION_INDEX_KEY, record.id)
+    .zrem(getSourceExecutionQueueIndexKey(record.sourceId), record.id)
   for (const status of RSS_QUEUE_STATUSES) {
     multi.zrem(getStatusQueueIndexKey(status), record.id)
   }
@@ -284,8 +315,9 @@ async function withRedisQueueConnection<T>(
 async function pruneRedisQueue(nowMs = Date.now(), context?: RedisQueueContext) {
   await withRedisQueueConnection("rss-harvest:queue-prune", context, async (redis) => {
     let start = 0
+    let batchCount = 0
 
-    while (true) {
+    while (batchCount < 1) {
       const ids = await redis.zrange(RSS_QUEUE_INDEX_KEY, start, start + REDIS_QUEUE_PRUNE_BATCH_SIZE - 1).catch(() => [])
       if (!Array.isArray(ids) || ids.length === 0) {
         return
@@ -304,6 +336,7 @@ async function pruneRedisQueue(nowMs = Date.now(), context?: RedisQueueContext) 
             const multi = redis.multi()
               .hdel(RSS_QUEUE_ITEMS_KEY, orphanId)
               .zrem(RSS_QUEUE_INDEX_KEY, orphanId)
+              .zrem(RSS_QUEUE_EXECUTION_INDEX_KEY, orphanId)
             for (const status of RSS_QUEUE_STATUSES) {
               multi.zrem(getStatusQueueIndexKey(status), orphanId)
             }
@@ -316,6 +349,7 @@ async function pruneRedisQueue(nowMs = Date.now(), context?: RedisQueueContext) 
         return
       }
       start += Math.max(0, ids.length - removedCount)
+      batchCount += 1
     }
   })
 }
@@ -392,6 +426,14 @@ async function persistQueueRecord(record: RssQueueRecord, context?: RedisQueueCo
       .hset(RSS_QUEUE_ITEMS_KEY, record.id, serializeRecord(record))
       .zadd(RSS_QUEUE_INDEX_KEY, String(score), record.id)
       .zadd(getSourceQueueIndexKey(record.sourceId), String(score), record.id)
+    if (record.startedAt) {
+      const executionScore = String(record.startedAt.getTime())
+      multi.zadd(RSS_QUEUE_EXECUTION_INDEX_KEY, executionScore, record.id)
+      multi.zadd(getSourceExecutionQueueIndexKey(record.sourceId), executionScore, record.id)
+    } else {
+      multi.zrem(RSS_QUEUE_EXECUTION_INDEX_KEY, record.id)
+      multi.zrem(getSourceExecutionQueueIndexKey(record.sourceId), record.id)
+    }
     for (const status of RSS_QUEUE_STATUSES) {
       if (status === record.status) {
         multi.zadd(getStatusQueueIndexKey(status), String(score), record.id)
@@ -605,6 +647,8 @@ export async function clearRssQueueHistoryBySource(sourceId: string) {
       multi.hdel(RSS_QUEUE_ITEMS_KEY, item.id)
       multi.zrem(RSS_QUEUE_INDEX_KEY, item.id)
       multi.zrem(getSourceQueueIndexKey(sourceId), item.id)
+      multi.zrem(RSS_QUEUE_EXECUTION_INDEX_KEY, item.id)
+      multi.zrem(getSourceExecutionQueueIndexKey(sourceId), item.id)
       for (const status of RSS_QUEUE_STATUSES) {
         multi.zrem(getStatusQueueIndexKey(status), item.id)
       }
@@ -695,8 +739,15 @@ async function listAllQueueItemsBySource(sourceId: string) {
 }
 
 export async function countRssExecutionItems() {
-  const items = await listAllQueueItems()
-  return items.filter(isExecutionQueueRecord).length
+  if (!hasRedisUrl()) {
+    return listInMemoryQueueItems(isExecutionQueueRecord).length
+  }
+
+  return withRedisQueueConnection("rss-harvest:queue-count-execution", undefined, async (redis) => {
+    await pruneQueueStore({ redis })
+    await ensureExecutionIndexesBackfilled(redis)
+    return Number(await redis.zcard(RSS_QUEUE_EXECUTION_INDEX_KEY).catch(() => 0))
+  })
 }
 
 export async function listAllRssQueueItems() {
@@ -708,11 +759,23 @@ export async function listAllRssQueueItemsBySource(sourceId: string) {
 }
 
 export async function listRssExecutionItemsPage(skip: number, take: number) {
-  const items = await listAllQueueItems()
-  return items
-    .filter(isExecutionQueueRecord)
-    .sort(sortExecutionRecordsDesc)
-    .slice(skip, skip + take)
+  if (!hasRedisUrl()) {
+    return listInMemoryQueueItems(isExecutionQueueRecord)
+      .sort(sortExecutionRecordsDesc)
+      .slice(skip, skip + take)
+  }
+
+  return withRedisQueueConnection("rss-harvest:queue-list-execution", undefined, async (redis) => {
+    await pruneQueueStore({ redis })
+    await ensureExecutionIndexesBackfilled(redis)
+    const ids = await readRedisSortedIds(RSS_QUEUE_EXECUTION_INDEX_KEY, {
+      role: "rss-harvest:queue-list-execution-read-ids",
+      start: skip,
+      stop: skip + take - 1,
+      reverse: true,
+    }, { redis })
+    return readRedisRecordsByIds(ids, { redis })
+  })
 }
 
 export async function listCompletedRssQueueIds() {
@@ -743,6 +806,8 @@ export async function clearRssQueueHistory() {
       multi.hdel(RSS_QUEUE_ITEMS_KEY, item.id)
       multi.zrem(RSS_QUEUE_INDEX_KEY, item.id)
       multi.zrem(getSourceQueueIndexKey(item.sourceId), item.id)
+      multi.zrem(RSS_QUEUE_EXECUTION_INDEX_KEY, item.id)
+      multi.zrem(getSourceExecutionQueueIndexKey(item.sourceId), item.id)
       for (const status of RSS_QUEUE_STATUSES) {
         multi.zrem(getStatusQueueIndexKey(status), item.id)
       }
@@ -754,24 +819,39 @@ export async function clearRssQueueHistory() {
 }
 
 export async function countRssExecutionItemsBySource(sourceId: string) {
-  const items = await listAllQueueItemsBySource(sourceId)
-  return items.filter(isExecutionQueueRecord).length
+  if (!hasRedisUrl()) {
+    return listInMemoryQueueItems((item) => item.sourceId === sourceId && isExecutionQueueRecord(item)).length
+  }
+
+  return withRedisQueueConnection("rss-harvest:queue-count-execution-source", undefined, async (redis) => {
+    await pruneQueueStore({ redis })
+    await ensureExecutionIndexesBackfilled(redis)
+    return Number(await redis.zcard(getSourceExecutionQueueIndexKey(sourceId)).catch(() => 0))
+  })
 }
 
 export async function listRssExecutionItemsBySource(sourceId: string, limit = 20) {
-  const items = await listAllQueueItemsBySource(sourceId)
-  return items
-    .filter(isExecutionQueueRecord)
-    .sort(sortExecutionRecordsDesc)
-    .slice(0, limit)
+  return listRssExecutionItemsPageBySource(sourceId, 0, limit)
 }
 
 export async function listRssExecutionItemsPageBySource(sourceId: string, skip: number, take: number) {
-  const items = await listAllQueueItemsBySource(sourceId)
-  return items
-    .filter(isExecutionQueueRecord)
-    .sort(sortExecutionRecordsDesc)
-    .slice(skip, skip + take)
+  if (!hasRedisUrl()) {
+    return listInMemoryQueueItems((item) => item.sourceId === sourceId && isExecutionQueueRecord(item))
+      .sort(sortExecutionRecordsDesc)
+      .slice(skip, skip + take)
+  }
+
+  return withRedisQueueConnection("rss-harvest:queue-list-execution-source", undefined, async (redis) => {
+    await pruneQueueStore({ redis })
+    await ensureExecutionIndexesBackfilled(redis)
+    const ids = await readRedisSortedIds(getSourceExecutionQueueIndexKey(sourceId), {
+      role: "rss-harvest:queue-list-execution-source-read-ids",
+      start: skip,
+      stop: skip + take - 1,
+      reverse: true,
+    }, { redis })
+    return readRedisRecordsByIds(ids, { redis })
+  })
 }
 
 export async function listCompletedRssQueueIdsBySource(sourceId: string) {

@@ -30,6 +30,22 @@ export function findInviteCodeList(limit: number) {
   })
 }
 
+export function deleteInviteCodeById(id: string) {
+  return prisma.inviteCode.deleteMany({
+    where: { id },
+  })
+}
+
+export function deleteInviteCodesByScope(scope: "all" | "used" | "unused") {
+  return prisma.inviteCode.deleteMany({
+    where: scope === "all"
+      ? {}
+      : {
+          usedAt: scope === "used" ? { not: null } : null,
+        },
+  })
+}
+
 export function countInviteCodesByCreator(userId: number) {
   return prisma.inviteCode.count({
     where: {

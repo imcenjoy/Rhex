@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import type { CSSProperties } from "react"
 
 import { LevelIcon } from "@/components/level-icon"
@@ -12,21 +12,84 @@ function isExternalHref(href: string) {
   return /^https?:\/\//i.test(href)
 }
 
-function isActiveHref(pathname: string, href: string) {
+function normalizePathname(pathname: string) {
+  if (pathname === "/") {
+    return pathname
+  }
+
+  return pathname.replace(/\/+$/g, "") || "/"
+}
+
+function getInternalHrefParts(href: string) {
   if (isExternalHref(href)) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(href, "http://local.invalid")
+
+    return {
+      pathname: normalizePathname(parsed.pathname),
+      searchParams: parsed.searchParams,
+      hasSearch: parsed.search.length > 0,
+    }
+  } catch {
+    return null
+  }
+}
+
+function matchesHrefSearchParams(
+  currentSearchParams: Pick<URLSearchParams, "getAll" | "keys">,
+  hrefSearchParams: URLSearchParams,
+) {
+  const names = new Set([
+    ...hrefSearchParams.keys(),
+    ...currentSearchParams.keys(),
+  ])
+
+  for (const name of names) {
+    const expectedValues = hrefSearchParams.getAll(name)
+    const currentValues = currentSearchParams.getAll(name)
+
+    if (
+      expectedValues.length !== currentValues.length
+      || expectedValues.some((value, index) => currentValues[index] !== value)
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function isActiveHref(
+  pathname: string,
+  searchParams: Pick<URLSearchParams, "getAll" | "keys">,
+  href: string,
+) {
+  const hrefParts = getInternalHrefParts(href)
+
+  if (!hrefParts) {
     return false
   }
 
-  const normalizedHref = href.split(/[?#]/)[0] || "/"
-  if (normalizedHref === "/") {
-    return pathname === "/"
+  const normalizedPathname = normalizePathname(pathname)
+  if (hrefParts.hasSearch) {
+    return normalizedPathname === hrefParts.pathname
+      && matchesHrefSearchParams(searchParams, hrefParts.searchParams)
   }
 
-  return pathname === normalizedHref || pathname.startsWith(`${normalizedHref}/`)
+  if (hrefParts.pathname === "/") {
+    return normalizedPathname === "/"
+  }
+
+  return normalizedPathname === hrefParts.pathname
+    || normalizedPathname.startsWith(`${hrefParts.pathname}/`)
 }
 
 export function HeaderTopAppNavigation({ links }: { links: SiteHeaderAppLinkItem[] }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   if (links.length === 0) {
     return null
@@ -36,7 +99,7 @@ export function HeaderTopAppNavigation({ links }: { links: SiteHeaderAppLinkItem
     <nav aria-label="顶部应用导航" className="hidden min-w-0 max-w-[min(44vw,460px)] items-center gap-2 overflow-hidden lg:flex">
       {links.map((item) => {
         const external = isExternalHref(item.href)
-        const active = isActiveHref(pathname, item.href)
+        const active = isActiveHref(pathname, searchParams, item.href)
         const hasIcon = item.icon.trim().length > 0
         const foregroundColor = active
           ? item.activeTextColor || item.textColor

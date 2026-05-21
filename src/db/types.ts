@@ -14,6 +14,8 @@ export {
   FriendLinkStatus,
   LotteryStatus,
   LotteryTriggerMode,
+  LotteryPrizeType,
+  LotteryVipPlan,
   NotificationType,
   PinScope,
   PointEffectDirection,

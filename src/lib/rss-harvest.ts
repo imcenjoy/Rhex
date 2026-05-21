@@ -43,12 +43,12 @@ import {
   clearRssQueueHistoryBySource,
   countRssExecutionItems,
   countRssExecutionItemsBySource,
+  countRssQueueSummary,
   countRssQueueItemsBySource,
   createRssQueueRecord,
   findRssQueueWithSourceById,
   listCompletedRssQueueIds,
   listCompletedRssQueueIdsBySource,
-  listAllRssQueueItems,
   listRssExecutionItemsPage,
   listRssExecutionItemsPageBySource,
   listRssQueueItemsBySource,
@@ -84,6 +84,8 @@ const RSS_PROCESS_QUEUE_BACKGROUND_JOB_NAME = "rss-harvest.process-queue-item" a
 const RSS_PROCESSING_SLOT_TTL_MS = 60_000
 const RSS_PROCESSING_SLOT_RENEW_INTERVAL_MS = 20_000
 const RSS_PROCESSING_SLOT_WAIT_MS = 1_000
+const RSS_DELAYED_JOB_CLEANUP_BATCH_SIZE = 100
+const RSS_DELAYED_JOB_CLEANUP_SCAN_LIMIT = 500
 const MIN_INTERVAL_MINUTES = 1
 const MAX_INTERVAL_MINUTES = 24 * 60
 const MIN_TIMEOUT_MS = 3_000
@@ -330,37 +332,72 @@ async function cleanupStaleRssDelayedJobs(options?: {
     : null
   const redis = getRedis()
   let removedCount = 0
+  let scannedCount = 0
 
   await connectRedisClient(redis)
-  const members = await redis.zrange(getBackgroundJobDelayedSetKey(), 0, -1).catch(() => [])
+  const delayedSetKey = getBackgroundJobDelayedSetKey()
+  let start = 0
 
-  for (const member of members) {
-    const job = parseBackgroundJobEnvelopeString(String(member))
-    if (!job || job.name !== RSS_PROCESS_QUEUE_BACKGROUND_JOB_NAME) {
-      continue
+  while (scannedCount < RSS_DELAYED_JOB_CLEANUP_SCAN_LIMIT) {
+    const stop = Math.min(
+      start + RSS_DELAYED_JOB_CLEANUP_BATCH_SIZE - 1,
+      RSS_DELAYED_JOB_CLEANUP_SCAN_LIMIT - 1,
+    )
+    const members = await redis.zrange(delayedSetKey, start, stop).catch(() => [])
+    if (members.length === 0) {
+      break
     }
 
-    const queueId = readRssQueueIdFromBackgroundJobPayload(job.payload)
-    if (!queueId) {
-      continue
+    let pageRemovedCount = 0
+    for (const member of members) {
+      const job = parseBackgroundJobEnvelopeString(String(member))
+      if (!job || job.name !== RSS_PROCESS_QUEUE_BACKGROUND_JOB_NAME) {
+        continue
+      }
+
+      const queueId = readRssQueueIdFromBackgroundJobPayload(job.payload)
+      if (!queueId) {
+        continue
+      }
+
+      if (targetQueueId && queueId !== targetQueueId) {
+        continue
+      }
+
+      const queueRecord = await findRssQueueWithSourceById(queueId)
+      if (targetSourceId && queueRecord?.sourceId !== targetSourceId) {
+        continue
+      }
+
+      const isCurrentPendingJob = queueRecord?.status === "PENDING" && queueRecord.backgroundJobId === job.id
+      if (isCurrentPendingJob) {
+        continue
+      }
+
+      const removed = await redis.zrem(delayedSetKey, member)
+      const removedNumber = Number(removed)
+      removedCount += removedNumber
+      pageRemovedCount += removedNumber
     }
 
-    if (targetQueueId && queueId !== targetQueueId) {
-      continue
+    scannedCount += members.length
+    if (members.length < RSS_DELAYED_JOB_CLEANUP_BATCH_SIZE) {
+      break
     }
+    start += Math.max(0, members.length - pageRemovedCount)
+  }
 
-    const queueRecord = await findRssQueueWithSourceById(queueId)
-    if (targetSourceId && queueRecord?.sourceId !== targetSourceId) {
-      continue
-    }
-
-    const isCurrentPendingJob = queueRecord?.status === "PENDING" && queueRecord.backgroundJobId === job.id
-    if (isCurrentPendingJob) {
-      continue
-    }
-
-    const removed = await redis.zrem(getBackgroundJobDelayedSetKey(), member)
-    removedCount += Number(removed)
+  if (scannedCount >= RSS_DELAYED_JOB_CLEANUP_SCAN_LIMIT) {
+    logInfo({
+      scope: "rss-harvest",
+      action: "cleanup-stale-delayed-jobs-truncated",
+      metadata: {
+        scannedCount,
+        scanLimit: RSS_DELAYED_JOB_CLEANUP_SCAN_LIMIT,
+        queueId: targetQueueId,
+        sourceId: targetSourceId,
+      },
+    })
   }
 
   return { removedCount }
@@ -867,47 +904,19 @@ function serializeQueuePreviewItem(item: Awaited<ReturnType<typeof listRssQueueI
   }
 }
 
-function sortAdminExecutionRecordsDesc(left: RssQueueRecord, right: RssQueueRecord) {
-  const leftTime = left.startedAt?.getTime() ?? left.createdAt.getTime()
-  const rightTime = right.startedAt?.getTime() ?? right.createdAt.getTime()
-  return rightTime - leftTime
-}
-
-function summarizeQueueItems(items: RssQueueRecord[]) {
-  let pending = 0
-  let processing = 0
-  let failed = 0
-
-  for (const item of items) {
-    if (item.status === "PENDING") pending += 1
-    if (item.status === "PROCESSING") processing += 1
-    if (item.status === "FAILED") failed += 1
-  }
-
-  return {
-    pending,
-    processing,
-    failed,
-  }
-}
-
 async function buildSourceAdminItem(
   source: RssSourceAdminRecord,
   runtimeState: RssSourceRuntimeState,
   input: {
     entryCount: number
-    queueItems: RssQueueRecord[]
+    queueCount: number
+    queueItemsPreviewWindow: RssQueueRecord[]
+    runCount: number
+    recentRuns: RssQueueRecord[]
   },
 ) {
-  const queueItems = input.queueItems
-  const queueCount = queueItems.length
-  const queueItemsPreviewWindow = queueItems.slice(0, 20)
+  const queueItemsPreviewWindow = input.queueItemsPreviewWindow
   const queuePreview = queueItemsPreviewWindow.slice(0, 1)
-  const executionItems = queueItems
-    .filter((item) => Boolean(item.startedAt))
-    .sort(sortAdminExecutionRecordsDesc)
-  const recentRuns = executionItems.slice(0, 1)
-  const runCount = executionItems.length
   const automaticActiveItem = queueItemsPreviewWindow.find((item) => isAutomaticQueueItem(item) && isActiveQueueStatus(item.status)) ?? null
 
   return {
@@ -930,11 +939,11 @@ async function buildSourceAdminItem(
     lastRunDurationMs: runtimeState.lastRunDurationMs,
     createdAt: source.createdAt.toISOString(),
     updatedAt: source.updatedAt.toISOString(),
-    runCount,
+    runCount: input.runCount,
     entryCount: input.entryCount,
-    queueCount,
+    queueCount: input.queueCount,
     queuePreview: queuePreview.map(serializeQueuePreviewItem),
-    recentRuns: recentRuns.map((run) => {
+    recentRuns: input.recentRuns.map((run) => {
       const serialized = serializeRunRecord(run, source.siteName)
       return {
         id: serialized.id,
@@ -972,8 +981,15 @@ export async function getRssAdminData(options?: {
   recentRunsPage?: number
   recentLogsPage?: number
 }): Promise<RssAdminData> {
-  await cleanupStaleRssDelayedJobs()
-  const [settings, schedulerStatus, allSources, recentLogsPage, allQueueItems, pendingSourceApplicationCount] = await Promise.all([
+  const [
+    settings,
+    schedulerStatus,
+    allSources,
+    recentLogsPage,
+    queueSummaryCounts,
+    recentRunTotal,
+    pendingSourceApplicationCount,
+  ] = await Promise.all([
     getOrCreateRssSettingRecord(),
     getRssSchedulerStatus(),
     listRssSourcesForAdmin(),
@@ -981,25 +997,18 @@ export async function getRssAdminData(options?: {
       page: options?.recentLogsPage,
       pageSize: RSS_MODAL_PAGE_SIZE,
     }),
-    listAllRssQueueItems(),
+    countRssQueueSummary(),
+    countRssExecutionItems(),
     countPendingRssSourceApplications(),
   ])
-  const queueSummary = summarizeQueueItems(allQueueItems)
-  const allExecutionItems = allQueueItems
-    .filter((item) => Boolean(item.startedAt))
-    .sort(sortAdminExecutionRecordsDesc)
-  const recentRunTotal = allExecutionItems.length
-  const queueItemsBySource = new Map<string, RssQueueRecord[]>()
-
-  for (const item of allQueueItems) {
-    const items = queueItemsBySource.get(item.sourceId) ?? []
-    items.push(item)
-    queueItemsBySource.set(item.sourceId, items)
+  const [pending, processing, failed] = queueSummaryCounts
+  const queueSummary = {
+    pending,
+    processing,
+    failed,
   }
 
-  const sourceRuntimeStates = await listRssSourceRuntimeStates(allSources.map((item) => item.id), {
-    queueItemsBySource,
-  })
+  const sourceRuntimeStates = await listRssSourceRuntimeStates(allSources.map((item) => item.id))
   const sortedSources = [...allSources].sort((left, right) => {
     const leftEnabled = sourceRuntimeStates.get(left.id)?.enabled ? 1 : 0
     const rightEnabled = sourceRuntimeStates.get(right.id)?.enabled ? 1 : 0
@@ -1019,26 +1028,45 @@ export async function getRssAdminData(options?: {
   const recentRunsPagination = resolvePagination({ page: options?.recentRunsPage, pageSize: RSS_MODAL_PAGE_SIZE }, recentRunTotal, [RSS_MODAL_PAGE_SIZE], RSS_MODAL_PAGE_SIZE)
 
   const pagedSources = sortedSources.slice(sourcePagination.skip, sourcePagination.skip + sourcePagination.pageSize)
-  const recentRuns = allExecutionItems.slice(recentRunsPagination.skip, recentRunsPagination.skip + recentRunsPagination.pageSize)
+  const recentRuns = await listRssExecutionItemsPage(recentRunsPagination.skip, recentRunsPagination.pageSize)
 
-  const sourceItems = await Promise.all(pagedSources.map(async (source) => buildSourceAdminItem(
-    source,
-    sourceRuntimeStates.get(source.id) ?? {
-      sourceId: source.id,
-      enabled: false,
-      lastRunAt: null,
-      lastSuccessAt: null,
-      lastErrorAt: null,
-      lastErrorMessage: null,
-      failureCount: 0,
-      lastRunDurationMs: null,
-      updatedAt: new Date(0),
-    },
-    {
-      entryCount: await countRssEntriesForSource(source.id),
-      queueItems: queueItemsBySource.get(source.id) ?? [],
-    },
-  )))
+  const sourceItems = await Promise.all(pagedSources.map(async (source) => {
+    const [
+      entryCount,
+      queueCount,
+      queueItemsPreviewWindow,
+      runCount,
+      sourceRecentRuns,
+    ] = await Promise.all([
+      countRssEntriesForSource(source.id),
+      countRssQueueItemsBySource(source.id),
+      listRssQueueItemsBySource(source.id, 20),
+      countRssExecutionItemsBySource(source.id),
+      listRssExecutionItemsPageBySource(source.id, 0, 1),
+    ])
+
+    return buildSourceAdminItem(
+      source,
+      sourceRuntimeStates.get(source.id) ?? {
+        sourceId: source.id,
+        enabled: false,
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastErrorAt: null,
+        lastErrorMessage: null,
+        failureCount: 0,
+        lastRunDurationMs: null,
+        updatedAt: new Date(0),
+      },
+      {
+        entryCount,
+        queueCount,
+        queueItemsPreviewWindow,
+        runCount,
+        recentRuns: sourceRecentRuns,
+      },
+    )
+  }))
   const recentRunSourceIds = Array.from(new Set(recentRuns.map((run) => run.sourceId)))
   const recentRunSources = recentRunSourceIds.length > 0
     ? await prisma.rssSource.findMany({

@@ -1,6 +1,6 @@
 import path from "path"
 
-export const ALLOWED_UPLOAD_FOLDERS = ["avatars", "posts", "comments", "post-covers", "friend-links", "site-logo", "icon", "message-images", "message-files"] as const
+export const ALLOWED_UPLOAD_FOLDERS = ["avatars", "posts", "comments", "post-covers", "friend-links", "site-logo", "icon", "emoji", "message-images", "message-files"] as const
 
 export type UploadFolder = (typeof ALLOWED_UPLOAD_FOLDERS)[number]
 

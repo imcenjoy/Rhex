@@ -9,6 +9,7 @@ import { describeBadgeRule, getBadgeCenterData } from "@/lib/badges"
 import { getUserPointLogs, getUserPointsDashboard } from "@/lib/points"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
+import { canSendSms } from "@/lib/sms"
 import { getCurrentUserLevelProgressView } from "@/lib/user-level-view"
 import { getUserFavoriteCollectionManageData } from "@/lib/favorite-collections"
 import { getMonthKey } from "@/lib/date-key"
@@ -276,6 +277,7 @@ export interface SettingsPageData {
   pointsDashboard: Awaited<ReturnType<typeof getUserPointsDashboard>> | null
   pointLogs: Awaited<ReturnType<typeof getUserPointLogs>> | null
   accountBindings: Awaited<ReturnType<typeof getUserAccountBindingView>> | null
+  smsDeliveryEnabled: boolean
 }
 
 function resolveTabKey<T extends string>(value: string | undefined, candidates: readonly T[], fallback: T) {
@@ -555,10 +557,13 @@ export async function loadSettingsPageData(searchParams?: RawSettingsSearchParam
     redirect("/settings?tab=profile")
   }
 
-  const [profile, dbUser, tabData] = await Promise.all([
+  const [profile, dbUser, tabData, smsDeliveryEnabled] = await Promise.all([
     getUserProfile(currentUser.username),
     getUserAccountSettings(currentUser.id),
     loadSettingsTabData(currentUser, route, settings),
+    route.currentTab === "profile" && route.currentProfileTab === "basic"
+      ? canSendSms()
+      : Promise.resolve(false),
   ])
 
   if (!profile) {
@@ -612,6 +617,7 @@ export async function loadSettingsPageData(searchParams?: RawSettingsSearchParam
     postManagementTabs: resolvedPostManagementTabs,
     activePostManagementAddonTab,
     badgeDisplayItems,
+    smsDeliveryEnabled,
     ...tabData,
   }
 }

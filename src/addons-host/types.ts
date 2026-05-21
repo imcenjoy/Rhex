@@ -765,6 +765,8 @@ export interface AddonUserProfileRecord {
   avatarPath: string | null
   email: string | null
   emailVerifiedAt: string | null
+  phone: string | null
+  phoneVerifiedAt: string | null
   activityVisibility: AddonUserProfileVisibility
   introductionVisibility: AddonUserProfileVisibility
   points: number
@@ -1187,6 +1189,33 @@ export interface AddonEmailsApi {
   send: (input: AddonEmailSendInput) => Promise<AddonEmailSendResult>
 }
 
+export interface AddonSmsSendInput {
+  recipientId?: number
+  recipientUsername?: string
+  phone?: string
+  code?: string
+  scene?: string
+  templateCode?: string
+  templateParam?: Record<string, unknown>
+  signName?: string
+  outId?: string
+}
+
+export interface AddonSmsSendResult {
+  userId?: number | null
+  username?: string | null
+  phone: string
+  provider: string
+  sent: true
+  sentAt: string
+  messageId?: string | null
+  requestId?: string | null
+}
+
+export interface AddonSmsApi {
+  send: (input: AddonSmsSendInput) => Promise<AddonSmsSendResult>
+}
+
 export interface AddonUserFollowInput {
   followerId?: number
   followerUsername?: string
@@ -1329,6 +1358,7 @@ export interface AddonExecutionContextBase extends AddonRuntimeDescriptor {
   messages: AddonMessagesApi
   notifications: AddonNotificationsApi
   emails: AddonEmailsApi
+  sms: AddonSmsApi
   follows: AddonFollowsApi
   points: AddonPointsApi
   badges: AddonBadgesApi
@@ -1539,6 +1569,7 @@ export interface AddonActionHookPayloadMap {
     gender: string
     avatarPath: string
     email: string | null
+    phone?: string | null
     activityVisibility: AddonUserProfileVisibility
     introductionVisibility: AddonUserProfileVisibility
     nicknameChanged: boolean
@@ -1546,6 +1577,7 @@ export interface AddonActionHookPayloadMap {
     introductionChanged: boolean
     avatarChanged: boolean
     emailChanged: boolean
+    phoneChanged?: boolean
     contentAdjusted: boolean
   }
   "user.update.after": {
@@ -1556,6 +1588,7 @@ export interface AddonActionHookPayloadMap {
     introductionChanged: boolean
     avatarChanged: boolean
     emailChanged: boolean
+    phoneChanged?: boolean
     contentAdjusted: boolean
     profile: AddonUserProfileRecord
   }
@@ -1752,6 +1785,7 @@ export interface AddonWaterfallHookPayloadMap {
     nextGender: string
     nextAvatarPath: string
     nextEmail: string | null
+    nextPhone?: string | null
     nextActivityVisibility: AddonUserProfileVisibility
     nextIntroductionVisibility: AddonUserProfileVisibility
   }
@@ -1762,6 +1796,7 @@ export interface AddonWaterfallHookPayloadMap {
     nextGender: string
     nextAvatarPath: string
     nextEmail: string | null
+    nextPhone?: string | null
     nextActivityVisibility: AddonUserProfileVisibility
     nextIntroductionVisibility: AddonUserProfileVisibility
   }
@@ -1772,6 +1807,7 @@ export interface AddonWaterfallHookPayloadMap {
     nextGender: string
     nextAvatarPath: string
     nextEmail: string | null
+    nextPhone?: string | null
     nextActivityVisibility: AddonUserProfileVisibility
     nextIntroductionVisibility: AddonUserProfileVisibility
   }
