@@ -13,8 +13,18 @@ import { applyPointDelta, type PreparedPointDelta } from "@/lib/point-center"
 import { POINT_LOG_EVENT_TYPES } from "@/lib/point-log-events"
 import { addSafeIntegers } from "@/lib/shared/safe-integer"
 
-export function findLotteryEnrollmentContext(input: { postId: string; userId: number; replyCommentId?: string | null }) {
-  return Promise.all([
+function isPrismaUniqueConstraintError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "P2002")
+}
+
+export async function findLotteryEnrollmentContext(input: { postId: string; userId: number; replyCommentId?: string | null }) {
+  const [
+    post,
+    user,
+    replyComment,
+    existingParticipant,
+    latestReplyComment,
+  ] = await Promise.all([
     prisma.post.findUnique({
       where: { id: input.postId },
       select: {
@@ -37,7 +47,36 @@ export function findLotteryEnrollmentContext(input: { postId: string; userId: nu
     }),
     prisma.user.findUnique({ where: { id: input.userId } }),
     input.replyCommentId ? prisma.comment.findUnique({ where: { id: input.replyCommentId } }) : Promise.resolve(null),
+    prisma.lotteryParticipant.findUnique({
+      where: {
+        postId_userId: {
+          postId: input.postId,
+          userId: input.userId,
+        },
+      },
+      include: {
+        sourceComment: true,
+      },
+    }),
+    input.replyCommentId
+      ? Promise.resolve(null)
+      : prisma.comment.findFirst({
+          where: {
+            postId: input.postId,
+            userId: input.userId,
+            status: "NORMAL",
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        }),
   ])
+
+  return [
+    post,
+    user,
+    replyComment ?? existingParticipant?.sourceComment ?? latestReplyComment,
+  ] as const
 }
 
 export function findLotteryInteractionState(input: { postId: string; userId: number }) {
@@ -70,27 +109,56 @@ export function upsertLotteryParticipantEligibility(input: {
   ineligibleReason: string | null
   joinedAt?: Date
 }) {
-  return prisma.lotteryParticipant.upsert({
-    where: {
-      postId_userId: {
-        postId: input.postId,
-        userId: input.userId,
-      },
+  const identity = {
+    postId_userId: {
+      postId: input.postId,
+      userId: input.userId,
     },
+  }
+  const data = {
+    postId: input.postId,
+    userId: input.userId,
+    sourceCommentId: input.replyCommentId ?? undefined,
+    isEligible: input.isEligible,
+    ineligibleReason: input.ineligibleReason,
+    ...(input.joinedAt ? { joinedAt: input.joinedAt } : {}),
+  }
+
+  if (!input.isEligible) {
+    return prisma.lotteryParticipant.create({ data })
+      .catch(async (error) => {
+        if (!isPrismaUniqueConstraintError(error)) {
+          throw error
+        }
+
+        await prisma.lotteryParticipant.updateMany({
+          where: {
+            postId: input.postId,
+            userId: input.userId,
+            isEligible: false,
+          },
+          data: {
+            isEligible: input.isEligible,
+            ineligibleReason: input.ineligibleReason,
+            sourceCommentId: input.replyCommentId ?? undefined,
+          },
+        })
+
+        return prisma.lotteryParticipant.findUnique({
+          where: identity,
+        })
+      })
+  }
+
+  return prisma.lotteryParticipant.upsert({
+    where: identity,
     update: {
       isEligible: input.isEligible,
       ineligibleReason: input.ineligibleReason,
       sourceCommentId: input.replyCommentId ?? undefined,
       ...(input.joinedAt ? { joinedAt: input.joinedAt } : {}),
     },
-    create: {
-      postId: input.postId,
-      userId: input.userId,
-      sourceCommentId: input.replyCommentId ?? undefined,
-      isEligible: input.isEligible,
-      ineligibleReason: input.ineligibleReason,
-      ...(input.joinedAt ? { joinedAt: input.joinedAt } : {}),
-    },
+    create: data,
   })
 }
 
