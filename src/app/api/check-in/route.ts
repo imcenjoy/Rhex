@@ -2,8 +2,8 @@ import { requireActiveCurrentUserRecord } from "@/db/current-user"
 
 import { apiError, apiSuccess, createCustomRouteHandler, readJsonBody } from "@/lib/api-route"
 import { getCheckInOverview, submitCheckInAction } from "@/lib/check-in-service"
+import { revalidateCheckInMutation } from "@/lib/content-mutation-revalidation"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
-import { revalidateUserSurfaceCache } from "@/lib/user-surface"
 import { createRequestWriteGuardOptions } from "@/lib/write-guard-policies"
 import { withRequestWriteGuard } from "@/lib/write-guard"
 
@@ -71,7 +71,7 @@ export const POST = createCustomRouteHandler(async ({ request, context: user }) 
         },
       })
 
-      revalidateUserSurfaceCache(user.id)
+      revalidateCheckInMutation({ userId: user.id })
     }
 
     return apiSuccess({

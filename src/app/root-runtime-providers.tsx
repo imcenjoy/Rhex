@@ -4,12 +4,13 @@ import { Suspense, type CSSProperties } from "react"
 
 import { RhexGlobalSdkBootstrap } from "@/addons-host/client/rhex-global-sdk"
 import { AddonRuntimeProvider } from "@/addons-host/client/addon-runtime-provider"
-import { GlobalLayoutAddonSlots } from "@/addons-host/client/global-layout-addon-slots"
+import { GlobalLayoutAddonSlotsBoundary } from "@/addons-host/runtime/global-layout-addon-slots-boundary"
 import { BackToTopButton } from "@/components/back-to-top-button"
 import { ConditionalSiteFooter } from "@/components/conditional-site-footer"
 import { CurrentUserInboxProvider, CurrentUserProvider } from "@/components/current-user-provider"
 import { DeferredToaster } from "@/components/deferred-toaster"
 import { GlobalNavigationProgress } from "@/components/global-navigation-progress"
+import { NavigationStaleRefresh } from "@/components/navigation-stale-refresh"
 import { RootBootstrap } from "@/components/root-bootstrap"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteSettingsProvider } from "@/components/site-settings-provider"
@@ -112,8 +113,9 @@ export async function RootRuntimeProviders({ children }: { children: React.React
       {vipNameColorCss ? <style dangerouslySetInnerHTML={{ __html: vipNameColorCss }} /> : null}
       <RhexGlobalSdkBootstrap session={rhexSession} site={rhexSite} />
       <RootBootstrap />
+      <NavigationStaleRefresh />
       <Suspense fallback={null}>
-        <GlobalLayoutAddonSlots />
+        <GlobalLayoutAddonSlotsBoundary />
       </Suspense>
       <ThemeProvider settings={settings.theme}>
         <CurrentUserProvider>
@@ -130,6 +132,7 @@ export async function RootRuntimeProviders({ children }: { children: React.React
               leftSidebarNavigationMode={settings.leftSidebarNavigationMode}
               leftSidebarHome={settings.leftSidebarHome}
               vipLevelIcons={settings.vipLevelIcons}
+              editorToolbar={settings.editorToolbar}
             >
               <AddonRuntimeProvider editorProviders={editorProviders} editorToolbarItems={editorToolbarItems} surfaceOverrides={addonSurfaceOverrides}>
                 <TooltipProvider>

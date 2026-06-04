@@ -3,7 +3,7 @@
 import { LotteryConditionValueField } from "@/components/post/lottery-condition-value-field"
 import { Button } from "@/components/ui/rbutton"
 import type { AccessThresholdOption } from "@/lib/access-threshold-options"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import {
   LOTTERY_PRIZE_TYPE_OPTIONS,
   LOTTERY_VIP_PLAN_OPTIONS,
@@ -277,7 +277,7 @@ export function LotterySettingsSection({
                       disabled={disabled}
                     />
                     <p className="text-xs leading-6 text-muted-foreground">
-                      已识别 {formatNumber(redemptionCodes.length)} 个兑换码，本奖项将产生 {formatNumber(redemptionCodes.length)} 份；开奖后每名中奖用户只会看到分配给自己的兑换码。
+                      已识别 {formatCompactNumber(redemptionCodes.length)} 个兑换码，本奖项将产生 {formatCompactNumber(redemptionCodes.length)} 份；开奖后每名中奖用户只会看到分配给自己的兑换码。
                     </p>
                   </div>
                 ) : null}

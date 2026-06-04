@@ -14,6 +14,7 @@ import { Toggle } from "@/components/ui/toggle"
 import type { PostRedPacketSummary } from "@/lib/post-red-packets"
 import type { PostGiftRecentEventItem, PostGiftStatItem } from "@/db/post-gift-queries"
 import type { SiteTippingGiftItem } from "@/lib/site-settings"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 
 
 
@@ -162,7 +163,7 @@ export function PostEngagementBar({ postId, postSlug, author, likeCount, favorit
               disabled={isPending}
             >
               <ThumbsUp className="h-4 w-4" />
-              {likes > 0 ? likes : null}
+              {likes > 0 ? <span className="tabular-nums" title={`${formatNumber(likes)} 点赞`}>{formatCompactNumber(likes)}</span> : null}
             </Toggle>
             <Toggle
               type="button"
@@ -173,7 +174,8 @@ export function PostEngagementBar({ postId, postSlug, author, likeCount, favorit
               onPressedChange={handleFavoriteButtonClick}
               disabled={isPending}
             >
-              <Bookmark className="h-4 w-4" />{favorites > 0 ? favorites : null}
+              <Bookmark className="h-4 w-4" />
+              {favorites > 0 ? <span className="tabular-nums" title={`${formatNumber(favorites)} 收藏`}>{formatCompactNumber(favorites)}</span> : null}
             </Toggle>
 
             {tipping?.enabled ? (

@@ -21,7 +21,6 @@ export function NotificationsPagination({ prevHref, nextHref }: NotificationsPag
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm text-muted-foreground">使用游标分页加载较新的通知与更早的通知。</p>
       <div className="flex items-center gap-3">
         <Link href={prevHref ?? "#"} aria-disabled={!prevHref} className={paginationLinkClassName(!prevHref)}>
           上一页

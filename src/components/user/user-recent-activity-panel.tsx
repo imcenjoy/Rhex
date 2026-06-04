@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { FileText, FolderOpen, MessageSquareText, Sparkles, type LucideIcon } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 interface UserRecentActivityTab {
@@ -30,14 +31,6 @@ const defaultActivityTabMeta: Record<string, { icon: LucideIcon }> = {
   collections: { icon: FolderOpen },
 }
 
-function formatTabCount(count: number) {
-  if (count > 99) {
-    return "99+"
-  }
-
-  return String(count)
-}
-
 export function UserRecentActivityPanel({
   title = "最近动态",
   description,
@@ -63,7 +56,7 @@ export function UserRecentActivityPanel({
               <p className="mt-1 text-sm text-muted-foreground">{description}</p>
             </div>
             <span className="rounded-full bg-[#f5f5f5] px-3 py-1 text-xs font-medium text-muted-foreground dark:bg-slate-800 dark:text-slate-300">
-              共 {totalCount} 条活动
+              共 <span title={`${formatNumber(totalCount)} 条活动`}>{formatCompactNumber(totalCount)}</span> 条活动
             </span>
           </div>
         ) : null}
@@ -109,8 +102,10 @@ export function UserRecentActivityPanel({
                         : active
                           ? "bg-background/15 text-background"
                           : "bg-secondary text-muted-foreground",
-                    )}>
-                      {formatTabCount(tab.count)}
+                    )}
+                    title={formatNumber(tab.count)}
+                    >
+                      {formatCompactNumber(tab.count)}
                     </span>
                   ) : null}
                 </Link>

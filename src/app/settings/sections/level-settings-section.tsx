@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle2, Crown, Flame, Heart, MessageSquareText, Spark
 import { LevelBadge } from "@/components/level-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildSettingsHref } from "@/app/settings/settings-page-loader"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { SettingsPageData } from "@/app/settings/settings-page-loader"
 
 export function LevelSettingsSection({ data }: { data: SettingsPageData }) {
@@ -131,7 +132,7 @@ function StatCard({ title, value, hint, icon }: { title: string; value: number; 
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="mt-2 text-3xl font-semibold">{value}</p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums" title={formatNumber(value)}>{formatCompactNumber(value)}</p>
             <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">{icon}</div>
@@ -149,14 +150,14 @@ function ProgressItem({ title, current, required, remaining, completed }: { titl
       <div className="flex items-center justify-between gap-3">
         <p className="font-medium">{title}</p>
         <span className={completed ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700" : "rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground"}>
-          {completed ? "已完成" : `还差 ${remaining}`}
+          {completed ? "已完成" : `还差 ${formatCompactNumber(remaining)}`}
         </span>
       </div>
       <div className="mt-4 h-2 rounded-full bg-secondary">
         <div className="h-2 rounded-full bg-foreground transition-all" style={{ width: `${progress}%` }} />
       </div>
       <p className="mt-3 text-sm text-muted-foreground">
-        {current} / {required}
+        <span title={`${formatNumber(current)} / ${formatNumber(required)}`}>{formatCompactNumber(current)} / {formatCompactNumber(required)}</span>
       </p>
     </div>
   )

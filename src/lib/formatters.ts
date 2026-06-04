@@ -1,6 +1,9 @@
 const BUSINESS_TIME_ZONE = "Asia/Shanghai"
 const BUSINESS_TIME_ZONE_OFFSET_MINUTES = 8 * 60
 const NUMBER_FORMATTER = new Intl.NumberFormat("zh-CN")
+const COMPACT_NUMBER_FORMATTER = new Intl.NumberFormat("zh-CN", {
+  maximumFractionDigits: 1,
+})
 
 type SupportedDateInput = string | Date
 
@@ -276,6 +279,25 @@ export function formatBusinessMonthDayTime(input: SupportedDateInput, locale = "
 
 export function formatNumber(value: number) {
   return NUMBER_FORMATTER.format(value)
+}
+
+export function formatCompactNumber(value: number) {
+  if (!Number.isFinite(value)) {
+    return "-"
+  }
+
+  const absoluteValue = Math.abs(value)
+  const sign = value < 0 ? "-" : ""
+
+  if (absoluteValue >= 99_950_000) {
+    return `${sign}${COMPACT_NUMBER_FORMATTER.format(absoluteValue / 100_000_000)}亿`
+  }
+
+  if (absoluteValue >= 10_000) {
+    return `${sign}${COMPACT_NUMBER_FORMATTER.format(absoluteValue / 10_000)}万`
+  }
+
+  return formatNumber(value)
 }
 
 export { BUSINESS_TIME_ZONE }

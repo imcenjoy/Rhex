@@ -1,6 +1,6 @@
 import { LeaderboardPageShell } from "@/components/leaderboards/leaderboard-page-shell"
 import { getCheckInLeaderboard, MAX_COMMUNITY_LEADERBOARD_LIMIT } from "@/lib/community-leaderboards"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getLeaderboardPageChromeData } from "@/lib/leaderboard-page-chrome"
 
 export default async function CheckInLeaderboardPage() {
@@ -39,10 +39,12 @@ export default async function CheckInLeaderboardPage() {
       ]}
       chrome={chrome}
       renderMetric={(entry) => (
-        <>连签 {formatNumber(entry.currentCheckInStreak)} 天 · 最长 {formatNumber(entry.maxCheckInStreak)} 天</>
+        <span title={`连签 ${formatNumber(entry.currentCheckInStreak)} 天 · 最长 ${formatNumber(entry.maxCheckInStreak)} 天`}>
+          连签 {formatCompactNumber(entry.currentCheckInStreak)} 天 · 最长 {formatCompactNumber(entry.maxCheckInStreak)} 天
+        </span>
       )}
-      renderMetricValue={(entry) => `${formatNumber(entry.checkInDays)} 天`}
-      renderMeta={(entry) => <span>最长 {formatNumber(entry.maxCheckInStreak)} 天</span>}
+      renderMetricValue={(entry) => `${formatCompactNumber(entry.checkInDays)} 天`}
+      renderMeta={(entry) => <span title={`最长 ${formatNumber(entry.maxCheckInStreak)} 天`}>最长 {formatCompactNumber(entry.maxCheckInStreak)} 天</span>}
     />
   )
 }

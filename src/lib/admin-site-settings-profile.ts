@@ -5,6 +5,7 @@ import {
 } from "@/db/site-settings-write-queries"
 import { apiError, readOptionalNumberField, readOptionalStringField, type JsonObject } from "@/lib/api-route"
 import { finalizeSiteSettingsUpdate, type SiteSettingsRecord } from "@/lib/admin-site-settings-shared"
+import { mergeEditorToolbarSettings, resolveEditorToolbarSettings } from "@/lib/editor-toolbar-settings"
 import { normalizeMarkdownEmojiItems, serializeMarkdownEmojiItems } from "@/lib/markdown-emoji"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
@@ -221,6 +222,25 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
     return finalizeSiteSettingsUpdate({
       settings,
       message: "页脚导航已保存",
+    })
+  }
+
+  if (section === "site-editor-toolbar") {
+    const currentSettings = resolveEditorToolbarSettings({
+      appStateJson: existing.appStateJson,
+    })
+    const appStateJson = mergeEditorToolbarSettings(
+      existing.appStateJson,
+      body.editorToolbar ?? currentSettings,
+    )
+    const settings = await updateSiteSettingsRecord(existing.id, {
+      appStateJson,
+    })
+
+    return finalizeSiteSettingsUpdate({
+      settings,
+      message: "编辑器工具栏已保存",
+      revalidatePaths: ["/write", "/admin"],
     })
   }
 

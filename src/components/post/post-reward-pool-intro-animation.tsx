@@ -9,7 +9,7 @@ import {
   readBrowsingPreferencesSnapshot,
   subscribeBrowsingPreferences,
 } from "@/lib/browsing-preferences"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { PostRedPacketSummary } from "@/lib/post-red-packets"
 import { cn } from "@/lib/utils"
 
@@ -93,7 +93,7 @@ export function PostRewardPoolIntroAnimation({ postId, summary }: PostRewardPool
 
     return {
       title: "红包已挂上",
-      value: `${summary.remainingCount} 个`,
+      value: `${formatCompactNumber(summary.remainingCount)} 个`,
       description: "当前剩余红包",
     }
   }, [summary])

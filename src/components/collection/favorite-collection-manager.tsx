@@ -8,6 +8,7 @@ import { PageNumberPagination } from "@/components/page-number-pagination"
 import { Button } from "@/components/ui/rbutton"
 import { showConfirm } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/toast"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 
 type FavoriteCollectionManageData = {
   collections: Array<{
@@ -256,11 +257,11 @@ export function FavoriteCollectionManager({ initialData }: { initialData: Favori
                       <h4 className="text-sm font-medium">{item.title}</h4>
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">{item.visibility === "PUBLIC" ? "公开" : "私有"}</span>
                       {item.allowOtherUsersToContribute ? <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">{item.requireContributionApproval ? "允许投稿 / 需审核" : "允许投稿 / 免审核"}</span> : null}
-                      {item.pendingSubmissionCount > 0 ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">待审核 {item.pendingSubmissionCount}</span> : null}
+                      {item.pendingSubmissionCount > 0 ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700 tabular-nums" title={`${formatNumber(item.pendingSubmissionCount)} 个待审核投稿`}>待审核 {formatCompactNumber(item.pendingSubmissionCount)}</span> : null}
                     </div>
                     {item.description ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.description}</p> : null}
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                      <span>帖子 {item.postCount}</span>
+                      <span title={`${formatNumber(item.postCount)} 帖`}>帖子 {formatCompactNumber(item.postCount)}</span>
                       <span>更新于 {new Date(item.updatedAt).toLocaleString()}</span>
                     </div>
                   </div>

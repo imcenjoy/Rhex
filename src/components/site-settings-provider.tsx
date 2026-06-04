@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo } from "react"
 
+import { normalizeEditorToolbarSettings, type EditorToolbarSettings } from "@/lib/editor-toolbar-settings"
 import { DEFAULT_MARKDOWN_EMOJI_ITEMS, type MarkdownEmojiItem } from "@/lib/markdown-emoji"
 import type { LeftSidebarDisplayMode, LeftSidebarHomeSettings, LeftSidebarNavigationMode } from "@/lib/site-settings"
 import { DEFAULT_VIP_LEVEL_ICONS, normalizeVipLevelIcons, type VipLevelIcons } from "@/lib/vip-level-icons"
@@ -13,6 +14,7 @@ interface SiteSettingsContextValue {
   leftSidebarNavigationMode: LeftSidebarNavigationMode
   leftSidebarHome: LeftSidebarHomeSettings
   vipLevelIcons: VipLevelIcons
+  editorToolbar: EditorToolbarSettings
 }
 
 const defaultSiteSettingsContextValue: SiteSettingsContextValue = {
@@ -26,6 +28,7 @@ const defaultSiteSettingsContextValue: SiteSettingsContextValue = {
     icon: "🏠",
   },
   vipLevelIcons: DEFAULT_VIP_LEVEL_ICONS,
+  editorToolbar: normalizeEditorToolbarSettings(),
 }
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue>(defaultSiteSettingsContextValue)
@@ -38,9 +41,10 @@ interface SiteSettingsProviderProps {
   leftSidebarNavigationMode?: LeftSidebarNavigationMode
   leftSidebarHome?: LeftSidebarHomeSettings
   vipLevelIcons?: VipLevelIcons
+  editorToolbar?: EditorToolbarSettings
 }
 
-export function SiteSettingsProvider({ children, markdownEmojiMap, markdownImageUploadEnabled = true, leftSidebarDisplayMode = "DEFAULT", leftSidebarNavigationMode = "DEFAULT", leftSidebarHome, vipLevelIcons }: SiteSettingsProviderProps) {
+export function SiteSettingsProvider({ children, markdownEmojiMap, markdownImageUploadEnabled = true, leftSidebarDisplayMode = "DEFAULT", leftSidebarNavigationMode = "DEFAULT", leftSidebarHome, vipLevelIcons, editorToolbar }: SiteSettingsProviderProps) {
   const value = useMemo<SiteSettingsContextValue>(() => ({
     markdownEmojiMap: markdownEmojiMap && markdownEmojiMap.length > 0 ? markdownEmojiMap : DEFAULT_MARKDOWN_EMOJI_ITEMS,
     markdownImageUploadEnabled,
@@ -48,7 +52,8 @@ export function SiteSettingsProvider({ children, markdownEmojiMap, markdownImage
     leftSidebarNavigationMode,
     leftSidebarHome: leftSidebarHome ?? defaultSiteSettingsContextValue.leftSidebarHome,
     vipLevelIcons: normalizeVipLevelIcons(vipLevelIcons),
-  }), [leftSidebarDisplayMode, leftSidebarHome, leftSidebarNavigationMode, markdownEmojiMap, markdownImageUploadEnabled, vipLevelIcons])
+    editorToolbar: normalizeEditorToolbarSettings(editorToolbar),
+  }), [editorToolbar, leftSidebarDisplayMode, leftSidebarHome, leftSidebarNavigationMode, markdownEmojiMap, markdownImageUploadEnabled, vipLevelIcons])
 
   return <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>
 }
@@ -79,4 +84,12 @@ export function useVipLevelIcons(override?: VipLevelIcons) {
     return normalizeVipLevelIcons(override)
   }
   return context.vipLevelIcons
+}
+
+export function useEditorToolbarSettings(override?: EditorToolbarSettings) {
+  const context = useSiteSettingsContext()
+  if (override) {
+    return normalizeEditorToolbarSettings(override)
+  }
+  return context.editorToolbar
 }

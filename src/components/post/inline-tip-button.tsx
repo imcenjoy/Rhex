@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/rbutton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { toast } from "@/components/ui/toast"
 import { Tooltip } from "@/components/ui/tooltip"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { SiteTippingGiftItem } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 
@@ -187,7 +187,11 @@ export function InlineTipButton({
         >
           <Gift className="h-3.5 w-3.5" />
           <span>{label}</span>
-          {tipCount > 0 ? <span className="rounded-full bg-amber-500/10 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-200">{formatNumber(tipCount)}</span> : null}
+          {tipCount > 0 ? (
+            <span className="rounded-full bg-amber-500/10 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-200" title={`${formatNumber(tipCount)} 次`}>
+              {formatCompactNumber(tipCount)}
+            </span>
+          ) : null}
         </PopoverTrigger>
       </Tooltip>
       <PopoverContent align="end" sideOffset={8} className="w-64 rounded-xl border border-border bg-background p-3 shadow-2xl">
@@ -212,7 +216,11 @@ export function InlineTipButton({
                       title={`${gift.name} · ${formatNumber(gift.price)} ${pointName}`}
                     >
                       <LevelIcon icon={gift.icon} className="h-4 w-4 text-base" emojiClassName="text-inherit leading-none" svgClassName="[&>svg]:block [&>svg]:h-full [&>svg]:w-full" title={gift.name} />
-                      {stat?.totalCount ? <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{formatNumber(stat.totalCount)}</span> : null}
+                      {stat?.totalCount ? (
+                        <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white" title={`${formatNumber(stat.totalCount)} 个`}>
+                          {formatCompactNumber(stat.totalCount)}
+                        </span>
+                      ) : null}
                     </button>
                   )
                 })}

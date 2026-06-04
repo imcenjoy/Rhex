@@ -2,6 +2,7 @@ import { DEFAULT_FOOTER_LINKS } from "@/lib/shared/config-parsers"
 import { DEFAULT_SITE_HEADER_APP_LINKS } from "@/lib/site-header-app-links"
 import { DEFAULT_MESSAGE_PROMPT_AUDIO_PATH } from "@/lib/message-prompt-audio"
 import { DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD } from "@/lib/god-comment-settings"
+import { DEFAULT_EDITOR_TOOLBAR_ORDER } from "@/lib/editor-toolbar-settings"
 
 const defaultFooterCopyrightText = `Rhex 论坛系统 ${new Date().getFullYear()}`
 
@@ -248,6 +249,10 @@ export const defaultSiteSettingsCreateInput = {
         guestCanView: true,
         initialVisibleReplies: 10,
         loadMode: "PAGINATION",
+      },
+      editorToolbar: {
+        order: DEFAULT_EDITOR_TOOLBAR_ORDER,
+        hidden: [],
       },
     },
   }),

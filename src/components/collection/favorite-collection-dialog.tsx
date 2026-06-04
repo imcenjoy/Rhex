@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 interface FavoriteCollectionDialogProps {
@@ -414,7 +415,7 @@ export function FavoriteCollectionDialog({
 
               <div className="flex items-center justify-between gap-3">
                 <Badge variant="secondary" className="rounded-full">
-                  共 {data.pagination.total} 个合集
+                  共 <span title={`${formatNumber(data.pagination.total)} 个合集`}>{formatCompactNumber(data.pagination.total)}</span> 个合集
                 </Badge>
                 <Link href="/collections" className="text-xs text-muted-foreground transition hover:text-foreground">
                   查看合集页
@@ -457,7 +458,7 @@ export function FavoriteCollectionDialog({
                           ) : null}
                         </div>
                         {collection.description ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{collection.description}</p> : null}
-                        <p className="mt-2 text-xs text-muted-foreground">已收录 {collection.postCount} 帖</p>
+                        <p className="mt-2 text-xs text-muted-foreground" title={`已收录 ${formatNumber(collection.postCount)} 帖`}>已收录 {formatCompactNumber(collection.postCount)} 帖</p>
                       </div>
                       <div className="sm:shrink-0">
                         {collection.alreadyIncluded ? (

@@ -127,6 +127,28 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
     void refresh()
   }, [refresh])
 
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        void refresh()
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void refresh()
+      }
+    }
+
+    window.addEventListener("pageshow", handlePageShow)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [refresh])
+
   const value = useMemo<CurrentUserContextValue>(() => ({
     ...payload,
     loading,

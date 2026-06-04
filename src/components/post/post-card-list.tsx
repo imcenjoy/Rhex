@@ -3,7 +3,7 @@ import { Eye, MessageCircle, ThumbsUp } from "lucide-react"
 import { PostListLink } from "@/components/post/post-list-link"
 import { TimeTooltip } from "@/components/time-tooltip"
 import { UserDisplayedBadges } from "@/components/user/user-displayed-badges"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getPostPath } from "@/lib/post-links"
 import type { SitePostItem } from "@/lib/posts"
 
@@ -55,9 +55,9 @@ export function PostCardList({ posts, pointName = "积分", compact = false, sho
             </PostListLink>
             {compact ? null : <p className="mt-3 text-sm leading-7 text-muted-foreground">{post.excerpt}</p>}
             <div className={`${compact ? "mt-3" : "mt-4"} flex flex-wrap items-center gap-4 text-sm text-muted-foreground`}>
-              <span className="flex items-center gap-1"><MessageCircle className="h-4 w-4" />{post.stats.comments}</span>
-              <span className="flex items-center gap-1"><ThumbsUp className="h-4 w-4" />{post.stats.likes}</span>
-              <span className="flex items-center gap-1"><Eye className="h-4 w-4" />{post.stats.views}</span>
+              <span className="flex items-center gap-1" title={`${formatNumber(post.stats.comments)} 回复`}><MessageCircle className="h-4 w-4" />{formatCompactNumber(post.stats.comments)}</span>
+              <span className="flex items-center gap-1" title={`${formatNumber(post.stats.likes)} 点赞`}><ThumbsUp className="h-4 w-4" />{formatCompactNumber(post.stats.likes)}</span>
+              <span className="flex items-center gap-1" title={`${formatNumber(post.stats.views)} 浏览`}><Eye className="h-4 w-4" />{formatCompactNumber(post.stats.views)}</span>
             </div>
           </div>
         )

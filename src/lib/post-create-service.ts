@@ -549,6 +549,7 @@ export async function createPostFlow(body: unknown, options: CreatePostFlowOptio
   return {
     post,
     author,
+    boardSlug: boardContext.board.slug,
     auction: createdAuction,
     shouldPending,
     contentAdjusted,

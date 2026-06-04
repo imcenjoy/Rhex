@@ -12,7 +12,7 @@ import { verifyCode } from "@/lib/verification"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { getSiteSettings } from "@/lib/site-settings"
 import { findUsernameSensitiveWord } from "@/lib/username-sensitive-words"
-import { revalidateUserSurfaceCache } from "@/lib/user-surface"
+import { revalidateUserProfileMutation } from "@/lib/user-profile-revalidation"
 import { isUserProfileVisibility, mapLegacyVisibilityBoolean, mergeUserProfileSettings, resolveUserProfileSettings, type UserProfileVisibility } from "@/lib/user-profile-settings"
 import { VerificationChannel } from "@/lib/shared/verification-channel"
 import { resolveVipTierPrice } from "@/lib/vip-tier-pricing"
@@ -509,7 +509,10 @@ export const POST = createUserRouteHandler<ProfileUpdateResponse>(async ({ reque
     },
   })
 
-  revalidateUserSurfaceCache(currentUser.id)
+  revalidateUserProfileMutation({
+    userId: currentUser.id,
+    username: updated.username,
+  })
 
   const updatedProfileSettings = resolveUserProfileSettings(updated.signature)
   const updatedProfile = mapAddonUserProfileRecord({

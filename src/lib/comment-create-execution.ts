@@ -5,13 +5,11 @@ import { triggerAiMention } from "@/lib/ai/mention-trigger"
 import { apiError } from "@/lib/api-route"
 import { createCommentFlow } from "@/lib/comment-create-service"
 import { buildCommentCreationNotifications } from "@/lib/comment-notifications"
-import { revalidateContentListCaches } from "@/lib/content-list-cache"
+import { revalidateApprovedCommentMutation } from "@/lib/content-mutation-revalidation"
 import { enqueuePostFollowCommentNotifications } from "@/lib/follow-notifications"
 import { handleCommentCreateSideEffects } from "@/lib/interaction-side-effects"
-import { revalidateHomeSidebarStatsCache } from "@/lib/home-sidebar-stats"
 import { enqueueEvaluateUserLevelProgress } from "@/lib/level-system"
 import { enqueueNotifications } from "@/lib/notification-writes"
-import { revalidatePostCommentCache, revalidatePostViewerCache } from "@/lib/post-detail-cache"
 import { logRequestSucceeded } from "@/lib/request-log"
 import { recordApprovedCommentTaskEvent } from "@/lib/task-center-service"
 import { revalidateUserSurfaceCache } from "@/lib/user-surface"
@@ -106,12 +104,15 @@ export async function executeCommentCreation(body: unknown, options: ExecuteComm
     })
   }
 
-  revalidateUserSurfaceCache(author.id)
-  revalidatePostViewerCache(author.id)
-  revalidatePostCommentCache({ postId: result.postId, slug: result.postSlug })
-  if (!result.reviewRequired) {
-    revalidateContentListCaches()
-    revalidateHomeSidebarStatsCache()
+  if (result.reviewRequired) {
+    revalidateUserSurfaceCache(author.id)
+  } else {
+    revalidateApprovedCommentMutation({
+      postId: result.postId,
+      postSlug: result.postSlug,
+      boardSlug: result.boardSlug,
+      authorId: author.id,
+    })
     void recordApprovedCommentTaskEvent({
       type: "APPROVED_COMMENT",
       userId: author.id,

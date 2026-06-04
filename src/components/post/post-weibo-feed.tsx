@@ -24,6 +24,7 @@ import { UserDisplayedBadges } from "@/components/user/user-displayed-badges"
 import { UserProfilePreviewCardTrigger } from "@/components/user/user-profile-preview-card-trigger"
 import { UserStatusBadge } from "@/components/user/user-status-badge"
 import { VipNameTooltip } from "@/components/vip/vip-name-tooltip"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { PostStreamDisplayItem } from "@/lib/forum-post-stream-display"
 import { omitPostListPreviewMediaFromMarkdown, type PostListPreviewMedia } from "@/lib/post-list-media"
 import { getPostPath } from "@/lib/post-links"
@@ -162,10 +163,10 @@ function IconActionLink({
         )}
       >
         <Icon className="h-4 w-4" aria-hidden="true" />
-        {typeof value === "number" && value > 0 ? <span className="text-xs font-medium">{value}</span> : null}
+        {typeof value === "number" && value > 0 ? <span className="text-xs font-medium tabular-nums" title={`${formatNumber(value)} ${label}`}>{formatCompactNumber(value)}</span> : null}
         {typeof badge === "number" && badge > 0 ? (
-          <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-4 text-white">
-            {badge}
+          <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-4 text-white tabular-nums" title={formatNumber(badge)}>
+            {formatCompactNumber(badge)}
           </span>
         ) : null}
       </PostListLink>
@@ -199,7 +200,7 @@ function IconActionButton({
         onClick={onClick}
       >
         <Icon className="h-4 w-4" aria-hidden="true" />
-        {typeof value === "number" && value > 0 ? <span className="text-xs font-medium">{value}</span> : null}
+        {typeof value === "number" && value > 0 ? <span className="text-xs font-medium tabular-nums" title={`${formatNumber(value)} ${label}`}>{formatCompactNumber(value)}</span> : null}
       </button>
     </Tooltip>
   )
@@ -276,9 +277,9 @@ function PostNoteActions({ item, postPath }: { item: PostStreamDisplayItem; post
         )}
       </div>
       <div className="flex items-center gap-1.5">
-        <PostListLink href={`${postPath}#comments`} className="inline-flex h-9 items-center gap-1 rounded-full px-2 transition-colors hover:opacity-90" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
+        <PostListLink href={`${postPath}#comments`} title={`${formatNumber(item.commentCount)} 回复`} className="inline-flex h-9 items-center gap-1 rounded-full px-2 transition-colors hover:opacity-90" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
           <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{item.commentCount}</span>
+          <span className="tabular-nums">{formatCompactNumber(item.commentCount)}</span>
         </PostListLink>
       </div>
     </div>

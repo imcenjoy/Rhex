@@ -8,7 +8,7 @@ import { HomeSidebarPanels } from "@/components/home/home-sidebar-panels"
 import { SiteHeader } from "@/components/site-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserAvatar } from "@/components/user/user-avatar"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { getLeaderboardPageChromeData } from "@/lib/leaderboard-page-chrome"
 import { getPublicUidLabel } from "@/lib/user-presentation"
 import { cn } from "@/lib/utils"
@@ -317,7 +317,7 @@ export function LeaderboardPageShell<TEntry extends LeaderboardShellEntry>({
                         <span>榜单按实时数据排序，刷新页面可查看最新结果。</span>
                         <span className="inline-flex items-center gap-1">
                           <TrendingUp className="h-3.5 w-3.5" />
-                          已展示 {formatNumber(entries.length)} 名
+                          <span title={`已展示 ${formatNumber(entries.length)} 名`}>已展示 {formatCompactNumber(entries.length)} 名</span>
                         </span>
                       </div>
                     ) : null}

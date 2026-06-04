@@ -17,6 +17,7 @@ import { MessageCircle, Paperclip } from "lucide-react"
 import { UserAvatar } from "@/components/user/user-avatar"
 import { UserProfilePreviewCardTrigger } from "@/components/user/user-profile-preview-card-trigger"
 import { UserStatusBadge } from "@/components/user/user-status-badge"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 import { getPostCommentPath, getPostPath } from "@/lib/post-links"
 
@@ -163,12 +164,12 @@ export function ForumPostListItem({
           <PostStatusBadge status={item.status} label={item.statusLabel} reviewNote={item.reviewNote} compact />
           {showPinBadge ? <PostPinBadge scope={item.pinScope} label={item.pinLabel} compact /> : null}
           {item.isFeatured ? <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200 sm:px-2 sm:text-[11px]">精华</span> : null}
-          <PostListLink href={`${postPath}#comments`} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-normal transition-colors hover:opacity-90 sm:px-2 sm:text-[11px]" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
+          <PostListLink href={`${postPath}#comments`} title={`${formatNumber(item.commentCount)} 回复`} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-normal tabular-nums transition-colors hover:opacity-90 sm:px-2 sm:text-[11px]" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
 
 
 
             <MessageCircle className="h-3 w-3" />
-            {item.commentCount}
+            {formatCompactNumber(item.commentCount)}
           </PostListLink>
         </div>
 

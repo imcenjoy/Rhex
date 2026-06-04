@@ -7,6 +7,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs"
 import { UserRecentRepliesList } from "@/components/user/user-recent-replies-list"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildSettingsHref } from "@/app/settings/settings-page-loader"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { SettingsPageData } from "@/app/settings/settings-page-loader"
 
 function buildCursorHref(route: SettingsPageData["route"], basePath: string, queryKey: string, cursor: string | null) {
@@ -105,7 +106,7 @@ function MyRepliesPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>我的回复</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {replies.total} 条记录</span>
+          <span className="text-sm text-muted-foreground" title={`共 ${formatNumber(replies.total)} 条记录`}>共 {formatCompactNumber(replies.total)} 条记录</span>
         </div>
       </CardHeader>
 
@@ -189,7 +190,7 @@ function PostListPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>{title}</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {posts.total} 条记录</span>
+          <span className="text-sm text-muted-foreground" title={`共 ${formatNumber(posts.total)} 条记录`}>共 {formatCompactNumber(posts.total)} 条记录</span>
         </div>
       </CardHeader>
 

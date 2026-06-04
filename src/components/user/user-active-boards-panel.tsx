@@ -2,7 +2,7 @@ import Link from "next/link"
 import { TrendingUp } from "lucide-react"
 
 import { LevelIcon } from "@/components/level-icon"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 
 interface UserActiveBoardItem {
   slug: string
@@ -46,8 +46,8 @@ export function UserActiveBoardsPanel({
               <div className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">
                 {board.name}
               </div>
-              <div className="shrink-0 text-[12px] font-medium text-muted-foreground">
-                {formatNumber(board.activityCount)} 活跃
+              <div className="shrink-0 text-[12px] font-medium tabular-nums text-muted-foreground" title={`${formatNumber(board.activityCount)} 活跃`}>
+                {formatCompactNumber(board.activityCount)} 活跃
               </div>
             </Link>
           ))}

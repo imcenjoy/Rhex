@@ -12,6 +12,7 @@ import { TimeTooltip } from "@/components/time-tooltip"
 import { Tooltip } from "@/components/ui/tooltip"
 import { UserStatusBadge } from "@/components/user/user-status-badge"
 import { VipNameTooltip } from "@/components/vip/vip-name-tooltip"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getPostPath } from "@/lib/post-links"
 import type { PostRewardPoolMode } from "@/lib/post-reward-pool-config"
 import { cn } from "@/lib/utils"
@@ -171,9 +172,9 @@ export function PostGalleryGrid({ items, showBoard = true, postLinkDisplayMode =
                 </div>
 
                 <div className="flex shrink-0 flex-col items-end gap-1.5 self-center">
-                  <PostListLink href={`${postPath}#comments`} className="inline-flex items-center gap-1 rounded-full px-2 py-[0.2rem] text-[10px] font-medium" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
+                  <PostListLink href={`${postPath}#comments`} title={`${formatNumber(item.commentCount)} 回复`} className="inline-flex items-center gap-1 rounded-full px-2 py-[0.2rem] text-[10px] font-medium tabular-nums" style={{ backgroundColor: `${item.commentAccentColor}14`, color: item.commentAccentColor }}>
                     <MessageCircle className="h-3 w-3" />
-                    {item.commentCount}
+                    {formatCompactNumber(item.commentCount)}
                   </PostListLink>
                   {item.isFeatured ? <span className="rounded-full bg-emerald-100 px-2 py-[0.2rem] text-[10px] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">精华</span> : null}
                   <PostStatusBadge status={item.status} label={item.statusLabel} reviewNote={item.reviewNote} compact />

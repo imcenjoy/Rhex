@@ -1,7 +1,7 @@
 import { Coins, Sparkles } from "lucide-react"
 
 import { PostRewardPoolIcon } from "@/components/post/post-list-shared"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { PostRedPacketSummary } from "@/lib/post-red-packets"
 import { cn } from "@/lib/utils"
 
@@ -56,10 +56,10 @@ export function PostRewardPoolHighlightBar({
   const label = isJackpot ? "聚宝盆进行中" : "红包进行中"
   const title = isJackpot
     ? `当前池中还剩 ${formatNumber(activeSummary.remainingPoints)} ${activeSummary.pointName}`
-    : `当前还剩 ${activeSummary.remainingCount} 个红包，共 ${formatNumber(activeSummary.remainingPoints)} ${activeSummary.pointName}`
+    : `当前还剩 ${formatCompactNumber(activeSummary.remainingCount)} 个红包，共 ${formatNumber(activeSummary.remainingPoints)} ${activeSummary.pointName}`
   const secondary = isJackpot
-    ? `已中 ${activeSummary.claimedCount} 次`
-    : `已领 ${activeSummary.claimedCount}/${activeSummary.packetCount}`
+    ? `已中 ${formatCompactNumber(activeSummary.claimedCount)} 次`
+    : `已领 ${formatCompactNumber(activeSummary.claimedCount)}/${formatCompactNumber(activeSummary.packetCount)}`
 
   return (
     <div
@@ -91,7 +91,7 @@ export function PostRewardPoolHighlightBar({
         </div>
         <div className={cn("inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-xs", badgeClassName)}>
           <Coins className="h-3.5 w-3.5" />
-          {isJackpot ? `${formatNumber(activeSummary.remainingPoints)} ${activeSummary.pointName}` : `${activeSummary.remainingCount} 个`}
+          {isJackpot ? `${formatNumber(activeSummary.remainingPoints)} ${activeSummary.pointName}` : `${formatCompactNumber(activeSummary.remainingCount)} 个`}
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { UserProfileRadarPanel } from "@/components/user/user-profile-radar-pane
 import { UserStatusBadge } from "@/components/user/user-status-badge"
 import { UserVerificationBadge } from "@/components/user/user-verification-badge"
 import { VipLevelIcon } from "@/components/vip/vip-level-icon"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getPublicUidLabel } from "@/lib/user-presentation"
 import { cn } from "@/lib/utils"
 import type { UserPreviewCardData } from "@/lib/user-preview-card"
@@ -38,8 +38,32 @@ interface UserProfilePreviewCardTriggerProps {
 }
 
 const previewDataCache = new Map<string, UserPreviewCardData>()
+const MUTATION_MARKER_KEY = "rhex:content-mutated-at"
+let previewDataCacheMutationMarker = 0
+
+function readMutationMarker() {
+  if (typeof window === "undefined") {
+    return 0
+  }
+
+  const raw = window.sessionStorage.getItem(MUTATION_MARKER_KEY)
+  const value = raw ? Number(raw) : 0
+  return Number.isFinite(value) ? value : 0
+}
+
+function syncPreviewDataCacheWithMutationMarker() {
+  const marker = readMutationMarker()
+  if (!marker || marker === previewDataCacheMutationMarker) {
+    return false
+  }
+
+  previewDataCacheMutationMarker = marker
+  previewDataCache.clear()
+  return true
+}
 
 function getInitialPreviewState(username: string): PreviewFetchState {
+  syncPreviewDataCacheWithMutationMarker()
   const cached = previewDataCache.get(username)
   return cached ? { username, status: "loaded", data: cached } : { username, status: "idle" }
 }
@@ -125,6 +149,10 @@ export function UserProfilePreviewCardTrigger({
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
+        if (nextOpen && syncPreviewDataCacheWithMutationMarker()) {
+          setState({ username, status: "idle" })
+        }
+
         setOpen(nextOpen)
         if (!nextOpen && state.username === username && state.status === "error") {
           setState({ username, status: "idle" })
@@ -343,11 +371,12 @@ function PreviewInlineStat({
   value: number
   label: string
 }) {
-  const formattedValue = formatNumber(value)
+  const exactValue = formatNumber(value)
+  const formattedValue = formatCompactNumber(value)
 
   return (
     <span
-      title={`${formattedValue} ${label}`}
+      title={`${exactValue} ${label}`}
       className="inline-flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap"
     >
       <span className="shrink-0 font-semibold tabular-nums text-foreground">{formattedValue}</span>

@@ -17,6 +17,7 @@ import { extractMentionTexts, stripUserLinkTokens } from "@/lib/mentions"
 import { logError, logInfo } from "@/lib/logger"
 import { createNotifications } from "@/lib/notification-writes"
 import { getSiteSettings } from "@/lib/site-settings"
+import { requestInternalContentRevalidation } from "@/lib/internal-revalidation-client"
 import { getAiReplyConfig, getServerAiReplyConfig, isAiReplyConfigRunnable, type AiReplyAgentConfigData, type AiReplyConfigData } from "@/lib/ai-reply-config"
 import { resolveAiProvider, type AiProviderConfig } from "@/lib/ai/provider"
 import { runAiTask } from "@/lib/ai/service"
@@ -936,6 +937,25 @@ async function processAiReplyTask(taskId: string) {
         })
 
     await markAiReplyTaskSucceeded(task.id, createdComment.id, createdComment.content)
+
+    await requestInternalContentRevalidation({
+      type: "approved-comment",
+      postId: task.postId,
+      postSlug: task.post.slug,
+      boardSlug: task.post.board.slug,
+      authorId: task.agentUserId,
+    }).catch((error) => {
+      logError({
+        scope: "ai-reply",
+        action: "revalidate-cache",
+        userId: task.agentUserId,
+        targetId: createdComment.id,
+        metadata: {
+          postId: task.postId,
+          sourceType: task.sourceType,
+        },
+      }, error)
+    })
 
     logInfo({
       scope: "ai-reply",

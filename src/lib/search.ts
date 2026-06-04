@@ -16,7 +16,7 @@ import {
   findSearchUsersPage,
 } from "@/db/search-queries"
 import { decodePinnedTimestampCursor, encodePinnedTimestampCursor } from "@/lib/cursor-pagination"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber } from "@/lib/formatters"
 import { getLevelBadgeData } from "@/lib/level-badge"
 import { getAnonymousMaskDisplayIdentity } from "@/lib/post-anonymous"
 import { getPostPath } from "@/lib/post-links"
@@ -231,7 +231,7 @@ function buildPagedResults<TItem>(
 }
 
 function formatSearchCount(value: number, suffix: string) {
-  return `${formatNumber(value)} ${suffix}`
+  return `${formatCompactNumber(value)} ${suffix}`
 }
 
 async function resolveSearchEnabled(searchEnabled?: boolean) {

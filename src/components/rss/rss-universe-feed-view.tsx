@@ -8,7 +8,7 @@ import { LevelIcon } from "@/components/level-icon"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { toast } from "@/components/ui/toast"
 import { getAvatarUrl } from "@/lib/avatar"
-import { formatNumber, formatRelativeTime } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber, formatRelativeTime } from "@/lib/formatters"
 import type { RssEntrySupportSummary } from "@/lib/rss-interactions"
 import type { RssUniverseFeedPageData } from "@/lib/rss-public-feed"
 import { cn } from "@/lib/utils"
@@ -188,9 +188,10 @@ export function RssUniverseFeedView({
                       )}
                       disabled={isPending}
                       onClick={() => handleLike(item)}
+                      title={`${formatNumber(item.likeCount)} 点赞`}
                     >
                       {isPending ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Heart data-icon="inline-start" className={item.viewerLiked ? "fill-current" : ""} />}
-                      {formatNumber(item.likeCount)}
+                      <span className="tabular-nums">{formatCompactNumber(item.likeCount)}</span>
                     </button>
 
                     <Popover open={activeEntryId === item.id} onOpenChange={(open) => setActiveEntryId(open ? item.id : null)}>

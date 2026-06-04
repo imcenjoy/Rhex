@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { getFavoriteCollectionDirectoryPage } from "@/lib/favorite-collections"
 import { getFriendLinkListData } from "@/lib/friend-links"
 import { getBoards } from "@/lib/boards"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getHomeSidebarHotTopics, resolveSidebarUser } from "@/lib/home-sidebar"
 import { getHomeSidebarStats } from "@/lib/home-sidebar-stats"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -98,7 +99,7 @@ export default async function FavoriteCollectionDirectoryPage(props: {
                           {item.description ? <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{item.description}</p> : null}
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                             <span className="truncate">创建者 {item.ownerName}</span>
-                            <span>帖子 {item.postCount}</span>
+                            <span title={`${formatNumber(item.postCount)} 帖`}>帖子 {formatCompactNumber(item.postCount)}</span>
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                             {item.allowOtherUsersToContribute ? <span>{item.requireContributionApproval ? "允许投稿 / 需审核" : "允许投稿 / 免审核"}</span> : <span>仅创建者维护</span>}

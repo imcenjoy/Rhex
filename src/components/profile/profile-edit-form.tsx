@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AlertCircle, Camera, CheckCircle2, LoaderCircle, Mail, PencilLine, Smartphone, UserRound } from "lucide-react"
 
@@ -8,6 +9,7 @@ import { PasswordChangeForm } from "@/components/profile/password-change-form"
 import { Modal } from "@/components/ui/modal"
 import { UserAvatar } from "@/components/user/user-avatar"
 import { Button } from "@/components/ui/rbutton"
+import { useCurrentUser } from "@/components/current-user-provider"
 import { toast } from "@/components/ui/toast"
 import type { AddonEditorProps } from "@/components/addon-editor"
 import type { AvatarCropModalProps } from "@/components/profile/avatar-crop-modal"
@@ -92,6 +94,8 @@ const visibilityLabelMap: Record<UserProfileVisibility, string> = {
   PRIVATE: "仅自己可见",
 }
 
+const MUTATION_MARKER_KEY = "rhex:content-mutated-at"
+
 function getActivityVisibilityDescription(visibility: UserProfileVisibility) {
   if (visibility === "PUBLIC") {
     return "任何访问你主页的人都能看到最近帖子与最近回复。"
@@ -150,6 +154,8 @@ export function ProfileEditForm({
   initialSection = "basic",
   availableSections = ["basic", "avatar", "email", "password", "privacy"],
 }: ProfileEditFormProps) {
+  const router = useRouter()
+  const { refresh: refreshCurrentUser } = useCurrentUser()
   const normalizedAvatarMaxFileSizeMb = Number.isFinite(avatarMaxFileSizeMb) && avatarMaxFileSizeMb > 0 ? avatarMaxFileSizeMb : 2
   const normalizedSections = useMemo<ProfileSectionKey[]>(
     () => (availableSections.length > 0 ? availableSections : ["basic"]),
@@ -286,6 +292,12 @@ export function ProfileEditForm({
     setCropSourceFile(null)
   }
 
+  function refreshAfterProfileMutation() {
+    window.sessionStorage.setItem(MUTATION_MARKER_KEY, String(Date.now()))
+    void refreshCurrentUser()
+    router.refresh()
+  }
+
   async function uploadAvatarFile(file: File) {
     const fallbackPreviewUrl = previewUrl || pendingAvatarPath || savedAvatarPath || initialAvatarPath || ""
     const nextPreviewUrl = URL.createObjectURL(file)
@@ -360,6 +372,8 @@ export function ProfileEditForm({
     if (!response.ok) {
       throw new Error(result.message ?? "保存失败")
     }
+
+    refreshAfterProfileMutation()
 
     return result
   }

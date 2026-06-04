@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/rbutton"
 import { Tooltip } from "@/components/ui/tooltip"
 import { toast } from "@/components/ui/toast"
 import { buildLoginHrefWithRedirect, getCurrentBrowserAuthRedirectTarget } from "@/lib/auth-redirect"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { SiteTippingGiftItem } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 
@@ -229,7 +229,7 @@ export function PostTipPanel({
   )
   const totalGiftCount = useMemo(() => giftSummary.reduce((total, item) => total + item.totalCount, 0), [giftSummary])
   const triggerTooltip = tipTotalPoints > 0
-    ? `本${targetLabel}已收到 ${totalGiftCount > 0 ? `${totalGiftCount} 份礼物，` : ""}${formatNumber(tipTotalPoints)} ${pointName}`
+    ? `本${targetLabel}已收到 ${totalGiftCount > 0 ? `${formatCompactNumber(totalGiftCount)} 份礼物，` : ""}${formatNumber(tipTotalPoints)} ${pointName}`
     : `送礼或积分打赏支持${supportTargetLabel}`
 
   const clearAnimationTimers = useCallback(() => {
@@ -527,8 +527,8 @@ export function PostTipPanel({
               </span>
             </span>
             {tipCount > 0 ? (
-              <span className="pointer-events-none absolute -right-1.5 -top-1.5 z-20 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-background shadow-[0_6px_14px_rgba(244,63,94,0.35)]">
-                {tipCount}
+              <span className="pointer-events-none absolute -right-1.5 -top-1.5 z-20 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-background shadow-[0_6px_14px_rgba(244,63,94,0.35)]" title={`${formatNumber(tipCount)} 次`}>
+                {formatCompactNumber(tipCount)}
               </span>
             ) : null}
 
@@ -586,11 +586,11 @@ export function PostTipPanel({
               return (
                 <div key={gift.id} className="relative shrink-0 overflow-visible">
                   {giftStat?.totalCount ? (
-                    <div className="pointer-events-none absolute right-[-6px] top-[-6px] z-10 min-w-[18px] rounded-full bg-amber-500 px-1.5 text-center text-[10px] font-semibold leading-5 text-white shadow-xs">
-                      {giftStat.totalCount}
+                    <div className="pointer-events-none absolute right-[-6px] top-[-6px] z-10 min-w-[18px] rounded-full bg-amber-500 px-1.5 text-center text-[10px] font-semibold leading-5 text-white shadow-xs" title={`${formatNumber(giftStat.totalCount)} 个`}>
+                      {formatCompactNumber(giftStat.totalCount)}
                     </div>
                   ) : null}
-                  <Tooltip content={`${gift.name} · ${formatNumber(gift.price)} ${pointName}${giftStat?.totalCount ? ` · 已收 ${giftStat.totalCount} 个` : ""}`}>
+                  <Tooltip content={`${gift.name} · ${formatNumber(gift.price)} ${pointName}${giftStat?.totalCount ? ` · 已收 ${formatCompactNumber(giftStat.totalCount)} 个` : ""}`}>
                     <button
                       ref={(node) => {
                         giftButtonRefs.current[gift.id] = node

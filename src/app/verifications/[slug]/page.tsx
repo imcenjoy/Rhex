@@ -13,7 +13,7 @@ import { getHomeAnnouncements } from "@/lib/announcements"
 import { getCurrentUser } from "@/lib/auth"
 import { buildLoginHrefWithRedirect } from "@/lib/auth-redirect"
 import { getBoards } from "@/lib/boards"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getHomeSidebarHotTopics, resolveSidebarUser } from "@/lib/home-sidebar"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -130,7 +130,10 @@ export default async function VerificationDetailPage(props: VerificationDetailPa
                       {verification.description?.trim() || "该认证用于展示用户在社区内的身份、资质或业务属性。"}
                     </p>
                     <div className="mt-6 grid gap-3 text-left sm:grid-cols-3">
-                      <VerificationStatCard label="已认证人数" value={`${formatNumber(verification.approvedUserCount)} 人`} />
+                      <VerificationStatCard
+                        label="已认证人数"
+                        value={<span title={`${formatNumber(verification.approvedUserCount)} 人`}>{formatCompactNumber(verification.approvedUserCount)} 人</span>}
+                      />
                       <VerificationStatCard label="申请成本" value={applicationCost} />
                       <VerificationStatCard label="公开展示" value="个性描述" />
                     </div>

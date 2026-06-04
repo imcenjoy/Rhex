@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { buildUnauthorizedResponse, getSessionFromRequest, isProtectedPath } from "@/lib/auth-guards"
 import { buildHomeFeedHref, normalizeHomeFeedSort, parseHomeFeedPage, type HomeFeedSort } from "@/lib/home-feed-route"
+import { RHEX_PATHNAME_HEADER } from "@/lib/request-context-headers"
 import { getSessionClearedCookieOptions, getSessionCookieName } from "@/lib/session"
 
 const PATH_HOME_FEED_SORTS: Record<string, HomeFeedSort> = {
@@ -33,6 +34,17 @@ function redirectLegacyHomeFeedPageQuery(request: NextRequest) {
   return NextResponse.redirect(url)
 }
 
+function nextWithRequestContext(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(RHEX_PATHNAME_HEADER, request.nextUrl.pathname)
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+}
+
 export async function proxy(request: NextRequest) {
   const legacyHomeFeedRedirect = redirectLegacyHomeFeedPageQuery(request)
   if (legacyHomeFeedRedirect) {
@@ -43,7 +55,7 @@ export async function proxy(request: NextRequest) {
   const protectedPath = isProtectedPath(request.nextUrl.pathname)
 
   if (!protectedPath) {
-    return NextResponse.next()
+    return nextWithRequestContext(request)
   }
 
   if (!token) {
@@ -52,7 +64,7 @@ export async function proxy(request: NextRequest) {
 
   const session = await getSessionFromRequest(request)
   if (session) {
-    return NextResponse.next()
+    return nextWithRequestContext(request)
   }
 
   if (protectedPath) {
@@ -61,7 +73,7 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  const response = NextResponse.next()
+  const response = nextWithRequestContext(request)
   response.cookies.set(getSessionCookieName(), "", getSessionClearedCookieOptions({ request }))
   return response
 }

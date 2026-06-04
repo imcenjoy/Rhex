@@ -7,28 +7,14 @@ import { createPortal } from "react-dom"
 
 import { AddonClientIslandLoader } from "@/addons-host/client/addon-client-island-loader"
 import type {
+  GlobalLayoutAddonSlotBlock,
+  GlobalLayoutAddonSlotsPayload,
+} from "@/addons-host/global-layout-addon-slots-types"
+import type {
   AddonRenderResult,
   AddonScriptDescriptor,
   AddonStyleDescriptor,
 } from "@/addons-host/types"
-
-type GlobalLayoutAddonSlotBlock = {
-  addonId: string
-  key: string
-  order: number
-  result: AddonRenderResult
-  slot: "layout.head.before" | "layout.head.after" | "layout.body.start" | "layout.body.end"
-}
-
-type GlobalLayoutAddonSlotsPayload = {
-  pathname: string
-  slots: {
-    headBefore: GlobalLayoutAddonSlotBlock[]
-    headAfter: GlobalLayoutAddonSlotBlock[]
-    bodyStart: GlobalLayoutAddonSlotBlock[]
-    bodyEnd: GlobalLayoutAddonSlotBlock[]
-  }
-}
 
 type ApiSuccess<T> = {
   code: 0
@@ -60,6 +46,22 @@ function normalizePathname(value: string | null) {
   }
 
   return value === "/" ? "/" : value.replace(/\/+$/g, "")
+}
+
+function seedPayloadCache(payload: GlobalLayoutAddonSlotsPayload | null | undefined) {
+  if (!payload) {
+    return
+  }
+
+  payloadCache.set(normalizePathname(payload.pathname), payload)
+}
+
+function resolveInitialPayload(
+  pathname: string,
+  initialPayload: GlobalLayoutAddonSlotsPayload | null | undefined,
+) {
+  seedPayloadCache(initialPayload)
+  return payloadCache.get(pathname) ?? null
 }
 
 function HeadPortal({ children }: { children: React.ReactNode }) {
@@ -99,13 +101,13 @@ function AddonRenderBlock({
   return (
     <>
       {normalizedStylesheets.map((item, index) => (
-        <style
+        <link
           key={`${blockKey}:style:${index}`}
-          dangerouslySetInnerHTML={{
-            __html: item.media
-              ? `@import url("${item.href}") ${item.media};`
-              : `@import url("${item.href}");`,
-          }}
+          rel="stylesheet"
+          href={item.href}
+          media={item.media}
+          data-addon-id={addonId}
+          data-addon-block={blockKey}
         />
       ))}
       {result.html ? (
@@ -181,11 +183,17 @@ async function fetchPayload(pathname: string, signal: AbortSignal) {
   return result.data
 }
 
-export function GlobalLayoutAddonSlots() {
+export function GlobalLayoutAddonSlots({
+  initialPayload = null,
+}: {
+  initialPayload?: GlobalLayoutAddonSlotsPayload | null
+}) {
   const pathname = normalizePathname(usePathname())
-  const [payload, setPayload] = useState<GlobalLayoutAddonSlotsPayload | null>(() => payloadCache.get(pathname) ?? null)
+  const [payload, setPayload] = useState<GlobalLayoutAddonSlotsPayload | null>(() => resolveInitialPayload(pathname, initialPayload))
 
   useEffect(() => {
+    seedPayloadCache(initialPayload)
+
     const cachedPayload = payloadCache.get(pathname)
     if (cachedPayload) {
       setPayload(cachedPayload)
@@ -209,7 +217,7 @@ export function GlobalLayoutAddonSlots() {
     return () => {
       controller.abort()
     }
-  }, [pathname])
+  }, [initialPayload, pathname])
 
   if (!payload) {
     return null

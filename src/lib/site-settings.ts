@@ -36,6 +36,7 @@ import { normalizePostEditableMinutes } from "@/lib/post-edit-window"
 import type { ServerSiteSettingsData, SiteSettingsData } from "@/lib/site-settings.types"
 import { normalizeHeaderAppIconName, parseSiteHeaderAppLinks, resolveTopHeaderAppLinks } from "./site-header-app-links"
 import { DEFAULT_MESSAGE_PROMPT_AUDIO_PATH } from "@/lib/message-prompt-audio"
+import { resolveEditorToolbarSettings } from "@/lib/editor-toolbar-settings"
 
 export type { FooterLinkItem } from "@/lib/shared/config-parsers"
 
@@ -50,6 +51,7 @@ export type { LeftSidebarHomeSettings } from "@/lib/site-settings-app-state"
 export type { PostSlugGenerationMode } from "@/lib/site-settings-app-state"
 export type { RegistrationEmailTemplateSettings } from "@/lib/site-settings-app-state"
 export type { PostLinkDisplayMode, ServerSiteSettingsData, SiteSettingsData } from "@/lib/site-settings.types"
+export type { EditorToolbarItemKey, EditorToolbarSettings } from "@/lib/editor-toolbar-settings"
 
 function filterMessageNavigationLinks<T extends { href: string }>(links: T[], messageEnabled: boolean): T[] {
   if (messageEnabled) {
@@ -269,6 +271,9 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
   const markdownImageUploadSettings = resolveMarkdownImageUploadSettings({
     appStateJson: record.appStateJson,
     enabledFallback: true,
+  })
+  const editorToolbarSettings = resolveEditorToolbarSettings({
+    appStateJson: record.appStateJson,
   })
   const uploadObjectStorageSettings = resolveUploadObjectStorageSettings({
     appStateJson: record.appStateJson,
@@ -664,6 +669,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     messageRealtimeEnabled: messageMediaSettings.realtimeEnabled,
     messageRealtimeHeartbeatSeconds: messageMediaSettings.realtimeHeartbeatSeconds,
     markdownEmojiMap: parseMarkdownEmojiMapJson(record.markdownEmojiMapJson),
+    editorToolbar: editorToolbarSettings,
     appStateJson: record.appStateJson,
   }
 }

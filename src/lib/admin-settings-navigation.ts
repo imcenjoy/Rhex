@@ -35,6 +35,10 @@ const adminSettingsSectionDetails: Record<
     label: "Markdown 表情",
     subTabs: [],
   },
+  "editor-toolbar": {
+    label: "编辑器工具栏",
+    subTabs: [],
+  },
   "footer-links": {
     label: "页脚导航",
     subTabs: [],

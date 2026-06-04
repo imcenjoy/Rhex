@@ -8,6 +8,7 @@ import { ReportDialog } from "@/components/post/report-dialog"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getPostPath } from "@/lib/post-links"
 import type { PostLinkDisplayMode } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
@@ -155,9 +156,9 @@ export function PostBodyCopyMenu({ post, postLinkDisplayMode = "SLUG", canReport
             <Ellipsis />
           </Button>
           {typeof viewCount === "number" ? (
-            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-secondary/80 px-2.5 text-xs text-muted-foreground shadow-sm backdrop-blur-xs">
+            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-secondary/80 px-2.5 text-xs text-muted-foreground shadow-sm backdrop-blur-xs" title={`${formatNumber(viewCount)} 浏览`}>
               <Eye className="h-3.5 w-3.5" />
-              {viewCount}
+              <span className="tabular-nums">{formatCompactNumber(viewCount)}</span>
             </span>
           ) : null}
         </div>

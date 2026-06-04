@@ -13,7 +13,7 @@ import { SiteHeader } from "@/components/site-header"
 import { Badge } from "@/components/ui/badge"
 import { UserAvatar } from "@/components/user/user-avatar"
 import { getCurrentUser } from "@/lib/auth"
-import { formatNumber, formatRelativeTime } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber, formatRelativeTime } from "@/lib/formatters"
 import { readSearchParam } from "@/lib/search-params"
 import { getConfiguredSiteOrigin } from "@/lib/site-origin"
 import { resolveExternalSearchSiteHost } from "@/lib/site-search-settings"
@@ -237,10 +237,10 @@ function getResultSummary(results: SearchScopedResults | null) {
   if (results.scope === "posts") {
     return results.data.total === null
       ? `当前页返回 ${formatNumber(results.data.items.length)} 条`
-      : `共找到 ${formatNumber(results.data.total)} 条`
+      : `共找到 ${formatCompactNumber(results.data.total)} 条`
   }
 
-  return `共找到 ${formatNumber(results.data.total)} 条，第 ${results.data.page} / ${results.data.totalPages} 页`
+  return `共找到 ${formatCompactNumber(results.data.total)} 条，第 ${results.data.page} / ${results.data.totalPages} 页`
 }
 
 function SearchScopeTabs({
@@ -350,8 +350,8 @@ function BoardSearchResults({ items }: { items: SearchBoardItem[] }) {
             </div>
             <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{board.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{formatNumber(board.postCount)} 篇帖子</span>
-              <span>{formatNumber(board.followerCount)} 人关注</span>
+              <span title={`${formatNumber(board.postCount)} 篇帖子`}>{formatCompactNumber(board.postCount)} 篇帖子</span>
+              <span title={`${formatNumber(board.followerCount)} 人关注`}>{formatCompactNumber(board.followerCount)} 人关注</span>
               <span>/{board.slug}</span>
             </div>
           </div>
@@ -374,7 +374,7 @@ function TagSearchResults({ items }: { items: SearchTagItem[] }) {
             <Hash className="size-4 shrink-0 text-muted-foreground" />
           </div>
           <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>{formatNumber(tag.postCount)} 篇帖子</span>
+            <span title={`${formatNumber(tag.postCount)} 篇帖子`}>{formatCompactNumber(tag.postCount)} 篇帖子</span>
             <span>{formatRelativeTime(tag.createdAt)}</span>
           </div>
         </Link>
@@ -402,8 +402,8 @@ function UserSearchResults({ items }: { items: SearchUserItem[] }) {
               <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{user.bio}</p>
               <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                <span>{formatNumber(user.postCount)} 帖子</span>
-                <span>{formatNumber(user.followerCount)} 粉丝</span>
+                <span title={`${formatNumber(user.postCount)} 帖子`}>{formatCompactNumber(user.postCount)} 帖子</span>
+                <span title={`${formatNumber(user.followerCount)} 粉丝`}>{formatCompactNumber(user.followerCount)} 粉丝</span>
                 <span>{levelLabel}</span>
               </div>
             </div>
@@ -432,7 +432,7 @@ function FavoriteCollectionSearchResults({ items }: { items: SearchFavoriteColle
             <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">{collection.description}</p>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatNumber(collection.postCount)} 篇内容</span>
+            <span title={`${formatNumber(collection.postCount)} 篇内容`}>{formatCompactNumber(collection.postCount)} 篇内容</span>
             {collection.allowOtherUsersToContribute ? <span>允许投稿</span> : null}
             <span>更新于 {formatRelativeTime(collection.updatedAt)}</span>
           </div>

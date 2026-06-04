@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState, useTransition } from "react"
 
 import type { PublicFavoriteCollectionProfilePage } from "@/lib/favorite-collections"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 function buildPageTokens(page: number, totalPages: number) {
@@ -103,7 +104,7 @@ export function UserPublicCollectionsPanel({
               <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{collection.description}</p>
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-              <span>帖子 {collection.postCount}</span>
+              <span title={`${formatNumber(collection.postCount)} 帖`}>帖子 {formatCompactNumber(collection.postCount)}</span>
               <span>{new Date(collection.updatedAt).toLocaleDateString()}</span>
             </div>
           </Link>

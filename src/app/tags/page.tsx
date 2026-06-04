@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCurrentUser } from "@/lib/auth"
 import { getBoards } from "@/lib/boards"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getHomeSidebarHotTopics, resolveSidebarUser } from "@/lib/home-sidebar"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
@@ -115,7 +116,7 @@ export default async function TagsPage(props: PageProps<"/tags">) {
               <Card>
                 <CardContent className="space-y-6 p-6">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-muted-foreground">共 {tagPage.pagination.total} 个标签，第 {tagPage.pagination.page} / {tagPage.pagination.totalPages} 页</p>
+                    <p className="text-sm text-muted-foreground" title={`共 ${formatNumber(tagPage.pagination.total)} 个标签`}>共 {formatCompactNumber(tagPage.pagination.total)} 个标签，第 {tagPage.pagination.page} / {tagPage.pagination.totalPages} 页</p>
                     <p className="text-sm text-muted-foreground">当前展示 {currentSort === "hot" ? "按帖子数排序" : "按创建时间排序"}</p>
                   </div>
 
@@ -132,7 +133,7 @@ export default async function TagsPage(props: PageProps<"/tags">) {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-base font-semibold text-foreground transition-colors group-hover:text-accent-foreground">#{tag.name}</p>
-                              <p className="mt-2 text-sm text-muted-foreground">关联 {tag.count} 篇帖子</p>
+                              <p className="mt-2 text-sm text-muted-foreground" title={`关联 ${formatNumber(tag.count)} 篇帖子`}>关联 {formatCompactNumber(tag.count)} 篇帖子</p>
                             </div>
                             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">
                               {currentSort === "hot" ? `TOP ${index + 1 + (tagPage.pagination.page - 1) * tagPage.pagination.pageSize}` : "NEW"}

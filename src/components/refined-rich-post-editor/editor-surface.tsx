@@ -19,6 +19,11 @@ import type {
   AddonEditorToolbarItemDescriptor,
 } from "@/addons-host/editor-types"
 import type { ClientPlatform } from "@/lib/client-platform"
+import {
+  normalizeEditorToolbarSettings,
+  type EditorToolbarItemKey,
+  type EditorToolbarSettings,
+} from "@/lib/editor-toolbar-settings"
 import type { MarkdownEmojiItem } from "@/lib/markdown-emoji"
 import { cn } from "@/lib/utils"
 
@@ -343,6 +348,7 @@ type EditorToolbarProps = {
   context: AddonEditorTarget
   visible: boolean
   disabled: boolean
+  toolbarSettings: EditorToolbarSettings
   toolbarItems: AddonEditorToolbarItemDescriptor[]
   toolbarApi: AddonEditorToolbarApi
   selectionStore: EditorSelectionStore
@@ -396,6 +402,7 @@ export function EditorToolbar({
   context,
   visible,
   disabled,
+  toolbarSettings,
   toolbarItems,
   toolbarApi,
   selectionStore,
@@ -449,105 +456,159 @@ export function EditorToolbar({
     selectionStore.getSnapshot,
     selectionStore.getSnapshot,
   )
+  const resolvedToolbarSettings = React.useMemo(
+    () => normalizeEditorToolbarSettings(toolbarSettings),
+    [toolbarSettings],
+  )
+  const hiddenToolbarItems = React.useMemo(
+    () => new Set(resolvedToolbarSettings.hidden),
+    [resolvedToolbarSettings.hidden],
+  )
 
   if (!visible) {
     return null
   }
 
+  const builtInToolbarItems: Record<EditorToolbarItemKey, React.ReactNode> = {
+    heading: (
+      <HeadingSelect
+        disabled={disabled}
+        platform={platform}
+        onMouseDown={onToolbarSelectMouseDown}
+        onOpenChange={onToolbarSelectOpenChange}
+        onSelect={onSetHeadingLevel}
+      />
+    ),
+    bold: (
+      <ToolButton tip={TOOLBAR_TIPS.bold} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onBold} disabled={disabled}>
+        <Bold className="h-4 w-4" />
+      </ToolButton>
+    ),
+    underline: (
+      <ToolButton tip={TOOLBAR_TIPS.underline} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onUnderline} disabled={disabled}>
+        <Underline className="h-4 w-4" />
+      </ToolButton>
+    ),
+    strike: (
+      <ToolButton tip={TOOLBAR_TIPS.strike} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onStrike} disabled={disabled}>
+        <Strikethrough className="h-4 w-4" />
+      </ToolButton>
+    ),
+    highlight: (
+      <ToolButton tip={TOOLBAR_TIPS.highlight} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onHighlight} disabled={disabled}>
+        <Highlighter className="h-4 w-4" />
+      </ToolButton>
+    ),
+    code: (
+      <CodeFormatSelect
+        disabled={disabled}
+        platform={platform}
+        onMouseDown={onToolbarSelectMouseDown}
+        onOpenChange={onToolbarSelectOpenChange}
+        onSelect={onCodeFormat}
+      />
+    ),
+    quote: (
+      <ToolButton tip={TOOLBAR_TIPS.quote} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onQuote} disabled={disabled}>
+        <Quote className="h-4 w-4" />
+      </ToolButton>
+    ),
+    spoiler: (
+      <div className="relative" ref={spoilerButtonRef}>
+        <ToolButton tip={TOOLBAR_TIPS.spoiler} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleSpoilerPanel} disabled={disabled} active={showSpoilerPanel}>
+          <EyeOff className="h-4 w-4" />
+        </ToolButton>
+      </div>
+    ),
+    list: (
+      <ListSelect
+        disabled={disabled}
+        platform={platform}
+        onMouseDown={onToolbarSelectMouseDown}
+        onOpenChange={onToolbarSelectOpenChange}
+        onSelect={onListFormat}
+      />
+    ),
+    link: (
+      <div className="relative" ref={linkButtonRef}>
+        <ToolButton tip={TOOLBAR_TIPS.link} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleLinkPanel} disabled={disabled} active={showLinkPanel}>
+          <Link2 className="h-4 w-4" />
+        </ToolButton>
+      </div>
+    ),
+    table: (
+      <div className="relative" ref={tableButtonRef}>
+        <ToolButton tip={TOOLBAR_TIPS.table} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleTablePanel} disabled={disabled} active={showTablePanel}>
+          <Table2 className="h-4 w-4" />
+        </ToolButton>
+      </div>
+    ),
+    divider: (
+      <ToolButton tip={TOOLBAR_TIPS.divider} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onInsertDivider} disabled={disabled}>
+        <SeparatorHorizontal className="h-4 w-4" />
+      </ToolButton>
+    ),
+    alignment: (
+      <AlignmentSelect
+        disabled={disabled}
+        platform={platform}
+        onMouseDown={onToolbarSelectMouseDown}
+        onOpenChange={onToolbarSelectOpenChange}
+        onSelect={onAlign}
+      />
+    ),
+    media: (
+      <div className="relative" ref={mediaButtonRef}>
+        <ToolButton tip={TOOLBAR_TIPS.media} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleMediaPanel} disabled={disabled} active={showMediaPanel}>
+          <Video className="h-4 w-4" />
+        </ToolButton>
+      </div>
+    ),
+    emoji: (
+      <div className="relative" ref={emojiButtonRef}>
+        <ToolButton tip={TOOLBAR_TIPS.emoji} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleEmojiPanel} disabled={disabled} active={showEmojiPanel}>
+          <Smile className="h-4 w-4" />
+        </ToolButton>
+      </div>
+    ),
+    image: (
+      <div className="relative" ref={imageButtonRef}>
+        <ToolButton
+          tip={imageToolbarTip}
+          platform={platform}
+          onPointerDown={onToolbarPointerDown}
+          onMouseDown={onToolbarMouseDown}
+          onClick={onTriggerImageShortcut}
+          disabled={disabled || (markdownImageUploadEnabled && uploading)}
+          active={showImagePanel}
+        >
+          <ImageIcon className="h-4 w-4" />
+        </ToolButton>
+        <input ref={fileInputRef} accept="image/*" multiple className="hidden" type="file" onChange={onUpload} disabled={disabled || !markdownImageUploadEnabled || uploading} />
+      </div>
+    ),
+    base64: (
+      <ToolButton tip={TOOLBAR_TIPS.base64} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onOpenBase64Dialog} disabled={disabled} active={showBase64Dialog || Boolean(privateReplyRecipient)}>
+        <Lock className="h-4 w-4" />
+      </ToolButton>
+    ),
+    help: (
+      <ToolButton tip={TOOLBAR_TIPS.help} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onOpenHelpDialog} disabled={disabled}>
+        <CircleHelp className="h-4 w-4" />
+      </ToolButton>
+    ),
+  }
+
   return (
     <div className={`relative flex min-w-0 max-w-full flex-col gap-3 border-t border-border ${isFullscreen ? "" : "mt-2 pt-2"} sm:flex-row sm:items-center sm:justify-between`}>
       <div className="-mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:px-0 sm:pb-0">
-        <HeadingSelect
-          disabled={disabled}
-          platform={platform}
-          onMouseDown={onToolbarSelectMouseDown}
-          onOpenChange={onToolbarSelectOpenChange}
-          onSelect={onSetHeadingLevel}
-        />
-        <ToolButton tip={TOOLBAR_TIPS.bold} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onBold} disabled={disabled}>
-          <Bold className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton tip={TOOLBAR_TIPS.underline} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onUnderline} disabled={disabled}>
-          <Underline className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton tip={TOOLBAR_TIPS.strike} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onStrike} disabled={disabled}>
-          <Strikethrough className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton tip={TOOLBAR_TIPS.highlight} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onHighlight} disabled={disabled}>
-          <Highlighter className="h-4 w-4" />
-        </ToolButton>
-        <CodeFormatSelect
-          disabled={disabled}
-          platform={platform}
-          onMouseDown={onToolbarSelectMouseDown}
-          onOpenChange={onToolbarSelectOpenChange}
-          onSelect={onCodeFormat}
-        />
-        <ToolButton tip={TOOLBAR_TIPS.quote} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onQuote} disabled={disabled}>
-          <Quote className="h-4 w-4" />
-        </ToolButton>
-        <div className="relative" ref={spoilerButtonRef}>
-          <ToolButton tip={TOOLBAR_TIPS.spoiler} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleSpoilerPanel} disabled={disabled} active={showSpoilerPanel}>
-            <EyeOff className="h-4 w-4" />
-          </ToolButton>
-        </div>
-        <ListSelect
-          disabled={disabled}
-          platform={platform}
-          onMouseDown={onToolbarSelectMouseDown}
-          onOpenChange={onToolbarSelectOpenChange}
-          onSelect={onListFormat}
-        />
-        <div className="relative" ref={linkButtonRef}>
-          <ToolButton tip={TOOLBAR_TIPS.link} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleLinkPanel} disabled={disabled} active={showLinkPanel}>
-            <Link2 className="h-4 w-4" />
-          </ToolButton>
-        </div>
-        <div className="relative" ref={tableButtonRef}>
-          <ToolButton tip={TOOLBAR_TIPS.table} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleTablePanel} disabled={disabled} active={showTablePanel}>
-            <Table2 className="h-4 w-4" />
-          </ToolButton>
-        </div>
-        <ToolButton tip={TOOLBAR_TIPS.divider} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onInsertDivider} disabled={disabled}>
-          <SeparatorHorizontal className="h-4 w-4" />
-        </ToolButton>
-        <AlignmentSelect
-          disabled={disabled}
-          platform={platform}
-          onMouseDown={onToolbarSelectMouseDown}
-          onOpenChange={onToolbarSelectOpenChange}
-          onSelect={onAlign}
-        />
-        <div className="relative" ref={mediaButtonRef}>
-          <ToolButton tip={TOOLBAR_TIPS.media} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleMediaPanel} disabled={disabled} active={showMediaPanel}>
-            <Video className="h-4 w-4" />
-          </ToolButton>
-        </div>
-        <div className="relative" ref={emojiButtonRef}>
-          <ToolButton tip={TOOLBAR_TIPS.emoji} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onToggleEmojiPanel} disabled={disabled} active={showEmojiPanel}>
-            <Smile className="h-4 w-4" />
-          </ToolButton>
-        </div>
-        <div className="relative" ref={imageButtonRef}>
-          <ToolButton
-            tip={imageToolbarTip}
-            platform={platform}
-            onPointerDown={onToolbarPointerDown}
-            onMouseDown={onToolbarMouseDown}
-            onClick={onTriggerImageShortcut}
-            disabled={disabled || (markdownImageUploadEnabled && uploading)}
-            active={showImagePanel}
-          >
-            <ImageIcon className="h-4 w-4" />
-          </ToolButton>
-          <input ref={fileInputRef} accept="image/*" multiple className="hidden" type="file" onChange={onUpload} disabled={disabled || !markdownImageUploadEnabled || uploading} />
-        </div>
-        <ToolButton tip={TOOLBAR_TIPS.base64} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onOpenBase64Dialog} disabled={disabled} active={showBase64Dialog || Boolean(privateReplyRecipient)}>
-          <Lock className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton tip={TOOLBAR_TIPS.help} platform={platform} onPointerDown={onToolbarPointerDown} onMouseDown={onToolbarMouseDown} onClick={onOpenHelpDialog} disabled={disabled}>
-          <CircleHelp className="h-4 w-4" />
-        </ToolButton>
+        {resolvedToolbarSettings.order.map((key) => (
+          hiddenToolbarItems.has(key) ? null : (
+            <React.Fragment key={key}>
+              {builtInToolbarItems[key]}
+            </React.Fragment>
+          )
+        ))}
         {toolbarItems.map((item) => (
           <AddonEditorToolbarItemHost
             key={`${item.addonId}:${item.providerCode}:${item.key}`}

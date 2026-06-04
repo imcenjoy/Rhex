@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/rbutton"
 import { Tooltip } from "@/components/ui/tooltip"
 import { UserAvatar } from "@/components/user/user-avatar"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { getPostRedPacketGrantModeLabel } from "@/lib/post-reward-pool-labels"
 import type { PostRedPacketSummary } from "@/lib/post-red-packets"
 
@@ -30,7 +30,7 @@ export function PostRedPacketPanel({ postId, pointName, summary }: PostRedPacket
   const [open, setOpen] = useState(false)
   const hoverSummary = summary.rewardMode === "JACKPOT"
     ? `余 ${formatNumber(summary.remainingPoints)} ${pointName}`
-    : `余 ${summary.remainingCount} 个`
+    : `余 ${formatCompactNumber(summary.remainingCount)} 个`
   const latestRecords = useMemo(() => summary.records.slice(-10).reverse(), [summary.records])
 
   return (
@@ -48,7 +48,7 @@ export function PostRedPacketPanel({ postId, pointName, summary }: PostRedPacket
         </span>
         <span className="inline-flex items-center overflow-hidden">
           <span className="shrink-0 transition-all duration-200 group-hover:translate-x-[-2px] group-hover:opacity-70">
-            {summary.claimedCount > 0 ? summary.claimedCount : ""}
+            {summary.claimedCount > 0 ? formatCompactNumber(summary.claimedCount) : ""}
           </span>
           <span className="max-w-0 shrink-0 whitespace-nowrap pl-0 text-[11px] text-muted-foreground opacity-0 transition-all duration-300 group-hover:max-w-[120px] group-hover:pl-1.5 group-hover:opacity-100">
             {hoverSummary}
@@ -69,7 +69,9 @@ export function PostRedPacketPanel({ postId, pointName, summary }: PostRedPacket
             <p className="text-sm text-muted-foreground">条件：{summary.triggerLabel ?? "互动后领取"}</p>
           </PopoverHeader>
           <div className="rounded-full bg-rose-50 px-3 py-1 text-xs text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">
-            {summary.rewardMode === "JACKPOT" ? `已中 ${summary.claimedCount} 次` : `已领 ${summary.claimedCount}/${summary.packetCount}`}
+            {summary.rewardMode === "JACKPOT"
+              ? `已中 ${formatCompactNumber(summary.claimedCount)} 次`
+              : `已领 ${formatCompactNumber(summary.claimedCount)}/${formatCompactNumber(summary.packetCount)}`}
           </div>
         </div>
 
@@ -80,7 +82,7 @@ export function PostRedPacketPanel({ postId, pointName, summary }: PostRedPacket
           </div>
           <div className="rounded-xl bg-secondary/40 px-4 py-3">
             <p className="text-xs text-muted-foreground">{summary.rewardMode === "JACKPOT" ? "当前积分池" : "剩余数量"}</p>
-            <p className="mt-1 font-semibold">{summary.rewardMode === "JACKPOT" ? `${formatNumber(summary.remainingPoints)} ${pointName}` : `${summary.remainingCount} / ${formatNumber(summary.remainingPoints)} ${pointName}`}</p>
+            <p className="mt-1 font-semibold">{summary.rewardMode === "JACKPOT" ? `${formatNumber(summary.remainingPoints)} ${pointName}` : `${formatCompactNumber(summary.remainingCount)} / ${formatNumber(summary.remainingPoints)} ${pointName}`}</p>
           </div>
           {summary.rewardMode === "JACKPOT" ? (
             <div className="col-span-2 rounded-xl bg-secondary/40 px-4 py-3">

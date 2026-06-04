@@ -1,4 +1,5 @@
 import type { BadgeEligibilitySnapshot } from "@/lib/badges"
+import { formatCompactNumber } from "@/lib/formatters"
 import type { SiteUserProfile } from "@/lib/users"
 
 export interface UserProfileRadarDimension {
@@ -41,7 +42,7 @@ function combineScore(items: Array<{ normalized: number; weight: number }>) {
 }
 
 function formatShortCount(value: number) {
-  return new Intl.NumberFormat("zh-CN").format(Math.max(0, Math.trunc(value)))
+  return formatCompactNumber(Math.max(0, Math.trunc(value)))
 }
 
 function getRegisterDays(createdAt: string) {

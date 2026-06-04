@@ -4,35 +4,18 @@ import { unstable_cache } from "next/cache"
 
 import { executeAddonSlot } from "@/addons-host/runtime/execute"
 import { GLOBAL_LAYOUT_ADDON_SLOTS_CACHE_TAG } from "@/addons-host/runtime/global-layout-slot-cache"
-import type { AddonRenderResult, AddonSlotKey } from "@/addons-host/types"
+import type {
+  GlobalLayoutAddonDevice,
+  GlobalLayoutAddonSlotBlock,
+  GlobalLayoutAddonSlotKey,
+  GlobalLayoutAddonSlotsPayload,
+} from "@/addons-host/global-layout-addon-slots-types"
 
-type GlobalLayoutDevice = "desktop" | "mobile"
-
-const GLOBAL_LAYOUT_SLOT_KEYS = [
-  "layout.head.before",
-  "layout.head.after",
-  "layout.body.start",
-  "layout.body.end",
-] as const satisfies AddonSlotKey[]
-
-export interface GlobalLayoutAddonSlotBlock {
-  addonId: string
-  key: string
-  order: number
-  result: AddonRenderResult
-  slot: (typeof GLOBAL_LAYOUT_SLOT_KEYS)[number]
-}
-
-export interface GlobalLayoutAddonSlotsPayload {
-  pathname: string
-  device: GlobalLayoutDevice
-  slots: {
-    headBefore: GlobalLayoutAddonSlotBlock[]
-    headAfter: GlobalLayoutAddonSlotBlock[]
-    bodyStart: GlobalLayoutAddonSlotBlock[]
-    bodyEnd: GlobalLayoutAddonSlotBlock[]
-  }
-}
+export type {
+  GlobalLayoutAddonDevice,
+  GlobalLayoutAddonSlotBlock,
+  GlobalLayoutAddonSlotsPayload,
+} from "@/addons-host/global-layout-addon-slots-types"
 
 function normalizePathname(value: string | null | undefined) {
   const rawValue = String(value ?? "/").trim()
@@ -47,18 +30,18 @@ export function normalizeGlobalLayoutAddonPathname(value: string | null | undefi
   return normalizePathname(value)
 }
 
-export function resolveGlobalLayoutAddonDevice(userAgent: string | null | undefined): GlobalLayoutDevice {
+export function resolveGlobalLayoutAddonDevice(userAgent: string | null | undefined): GlobalLayoutAddonDevice {
   return /android|iphone|ipad|ipod|mobile|windows phone|iemobile|opera mini|blackberry|tablet/i.test(String(userAgent ?? ""))
     ? "mobile"
     : "desktop"
 }
 
-function deviceToUserAgent(device: GlobalLayoutDevice) {
+function deviceToUserAgent(device: GlobalLayoutAddonDevice) {
   return device === "mobile" ? "Mobile" : ""
 }
 
 async function executeGlobalLayoutSlot(
-  slot: (typeof GLOBAL_LAYOUT_SLOT_KEYS)[number],
+  slot: GlobalLayoutAddonSlotKey,
   props: { pathname: string; userAgent: string },
 ): Promise<GlobalLayoutAddonSlotBlock[]> {
   const blocks = await executeAddonSlot(slot, props, {
@@ -75,7 +58,7 @@ async function executeGlobalLayoutSlot(
 }
 
 const getCachedGlobalLayoutAddonSlotsPayloadInternal = unstable_cache(
-  async (pathnameInput: string, device: GlobalLayoutDevice): Promise<GlobalLayoutAddonSlotsPayload> => {
+  async (pathnameInput: string, device: GlobalLayoutAddonDevice): Promise<GlobalLayoutAddonSlotsPayload> => {
     const pathname = normalizePathname(pathnameInput)
     const props = {
       pathname,
@@ -107,6 +90,6 @@ const getCachedGlobalLayoutAddonSlotsPayloadInternal = unstable_cache(
   },
 )
 
-export function getCachedGlobalLayoutAddonSlotsPayload(pathname: string, device: GlobalLayoutDevice) {
+export function getCachedGlobalLayoutAddonSlotsPayload(pathname: string, device: GlobalLayoutAddonDevice) {
   return getCachedGlobalLayoutAddonSlotsPayloadInternal(pathname, device)
 }

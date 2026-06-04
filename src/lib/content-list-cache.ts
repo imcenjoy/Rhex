@@ -1,13 +1,18 @@
 import { revalidateTag } from "next/cache"
 
-import { revalidateTaxonomyContentCache } from "@/lib/taxonomy-cache"
+import {
+  expireTaxonomyContentCacheImmediately,
+  revalidateTaxonomyContentCache,
+} from "@/lib/taxonomy-cache"
 
 export const FORUM_FEED_CACHE_TAG = "forum-feed"
 export const HOME_SIDEBAR_HOT_TOPICS_CACHE_TAG = "home-sidebar-hot-topics"
 
-function revalidateContentListTag(tag: string) {
+type ContentListRevalidateProfile = "max" | { expire: 0 }
+
+function revalidateContentListTag(tag: string, profile: ContentListRevalidateProfile) {
   try {
-    revalidateTag(tag, "max")
+    revalidateTag(tag, profile)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (
@@ -22,15 +27,29 @@ function revalidateContentListTag(tag: string) {
 }
 
 export function revalidateForumFeedCache() {
-  revalidateContentListTag(FORUM_FEED_CACHE_TAG)
+  revalidateContentListTag(FORUM_FEED_CACHE_TAG, "max")
+}
+
+export function expireForumFeedCacheImmediately() {
+  revalidateContentListTag(FORUM_FEED_CACHE_TAG, { expire: 0 })
 }
 
 export function revalidateHomeSidebarHotTopicsCache() {
-  revalidateContentListTag(HOME_SIDEBAR_HOT_TOPICS_CACHE_TAG)
+  revalidateContentListTag(HOME_SIDEBAR_HOT_TOPICS_CACHE_TAG, "max")
+}
+
+export function expireHomeSidebarHotTopicsCacheImmediately() {
+  revalidateContentListTag(HOME_SIDEBAR_HOT_TOPICS_CACHE_TAG, { expire: 0 })
 }
 
 export function revalidateContentListCaches() {
   revalidateForumFeedCache()
   revalidateHomeSidebarHotTopicsCache()
   revalidateTaxonomyContentCache()
+}
+
+export function expireContentListCachesImmediately() {
+  expireForumFeedCacheImmediately()
+  expireHomeSidebarHotTopicsCacheImmediately()
+  expireTaxonomyContentCacheImmediately()
 }

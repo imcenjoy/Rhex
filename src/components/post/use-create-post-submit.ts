@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import type { FormEvent } from "react"
 import { useEffect, useState } from "react"
 
@@ -29,6 +30,7 @@ export function useCreatePostSubmit({
   onSuccess,
   resolveDraftBeforeSubmit,
 }: UseCreatePostSubmitOptions) {
+  const router = useRouter()
   const isEditMode = mode === "edit"
   const slowSubmitThresholdMs = 8000
   const [loading, setLoading] = useState(false)
@@ -110,7 +112,9 @@ export function useCreatePostSubmit({
 
       if (typeof window !== "undefined") {
         if (targetPath) {
-          window.location.assign(targetPath)
+          window.sessionStorage.setItem("rhex:content-mutated-at", String(Date.now()))
+          router.push(targetPath)
+          router.refresh()
           return
         }
 

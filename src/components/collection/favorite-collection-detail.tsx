@@ -9,6 +9,7 @@ import { PageNumberPagination } from "@/components/page-number-pagination"
 import { Button } from "@/components/ui/rbutton"
 import { showConfirm } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/toast"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { SitePostItem } from "@/lib/posts"
 
 interface FavoriteCollectionDetailProps {
@@ -235,7 +236,7 @@ export function FavoriteCollectionDetail({
                 {data.description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{data.description}</p> : null}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                   <span>创建者 {data.ownerName}</span>
-                  <span>帖子 {data.postCount}</span>
+                  <span title={`${formatNumber(data.postCount)} 帖`}>帖子 {formatCompactNumber(data.postCount)}</span>
                   <span>更新于 {new Date(data.updatedAt).toLocaleString()}</span>
                 </div>
               </div>
@@ -267,7 +268,7 @@ export function FavoriteCollectionDetail({
                     <h2 className="text-base font-semibold">待审核投稿</h2>
                     <p className="mt-1 text-xs text-muted-foreground">只有创建者可见，通过后帖子会正式进入合集。</p>
                   </div>
-                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] text-amber-700">待审核 {data.pendingPagination.total}</span>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] text-amber-700 tabular-nums" title={`${formatNumber(data.pendingPagination.total)} 个待审核投稿`}>待审核 {formatCompactNumber(data.pendingPagination.total)}</span>
                 </div>
 
                 <div className="mt-3 space-y-2.5">
@@ -327,7 +328,7 @@ export function FavoriteCollectionDetail({
                 <h2 className="text-base font-semibold">已收录帖子</h2>
                 <p className="mt-1 text-xs text-muted-foreground">{data.items.length > 0 ? "按加入时间倒序显示。" : "这个合集里还没有帖子。"}</p>
               </div>
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground">{data.pagination.total} 帖</span>
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums" title={`${formatNumber(data.pagination.total)} 帖`}>{formatCompactNumber(data.pagination.total)} 帖</span>
             </div>
 
             <div className="mt-3 space-y-2.5">

@@ -66,6 +66,7 @@ import { getZones } from "@/lib/zones"
 import { getCanonicalPostPath } from "@/lib/post-links"
 import { canManageBoard, getAvailablePinScopes, isSiteAdmin as isSiteAdminActor, resolveAdminActorFromSessionUser } from "@/lib/moderator-permissions"
 import { AddonSlotRenderer, AddonSurfaceRenderer } from "@/addons-host"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 
 function buildUrlSearchParams(
   input?: Record<string, string | string[] | undefined>,
@@ -680,7 +681,9 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
                       <div className="flex items-center gap-3">
                         <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
                           <MessageCircle className="h-4 w-4" />
-                          {displayPost.stats.comments}
+                          <span className="tabular-nums" title={`${formatNumber(displayPost.stats.comments)} 回复`}>
+                            {formatCompactNumber(displayPost.stats.comments)}
+                          </span>
                         </span>
                         {currentUser && canReplyToPost ? (
                           <CommentReplyToggleButton threadId={displayPost.id} />

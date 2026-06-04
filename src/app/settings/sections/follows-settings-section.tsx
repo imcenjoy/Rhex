@@ -10,6 +10,7 @@ import { UserBlockToggleButton } from "@/components/user/user-block-toggle-butto
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildSettingsHref } from "@/app/settings/settings-page-loader"
 import { followTabs } from "@/app/settings/settings-page-loader"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import type { SettingsPageData } from "@/app/settings/settings-page-loader"
 
 type SocialUserListItem = {
@@ -93,7 +94,7 @@ function FollowBoardsPanel({ route, followedBoards }: { route: SettingsPageData[
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>关注节点</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {followedBoards.total} 个节点</span>
+          <span className="text-sm text-muted-foreground" title={`共 ${formatNumber(followedBoards.total)} 个节点`}>共 {formatCompactNumber(followedBoards.total)} 个节点</span>
         </div>
       </CardHeader>
 
@@ -115,8 +116,8 @@ function FollowBoardsPanel({ route, followedBoards }: { route: SettingsPageData[
               </div>
               <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{board.description?.trim() || "这个节点还没有填写简介。"}</p>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                <span>内容 {board.postCount}</span>
-                <span>关注 {board.followerCount}</span>
+                <span title={`${formatNumber(board.postCount)} 内容`}>内容 {formatCompactNumber(board.postCount)}</span>
+                <span title={`${formatNumber(board.followerCount)} 关注`}>关注 {formatCompactNumber(board.followerCount)}</span>
               </div>
             </Link>
           ))}
@@ -175,7 +176,7 @@ function FollowTagsPanel({ route, followedTags }: { route: SettingsPageData["rou
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>关注标签</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {followedTags.total} 个标签</span>
+          <span className="text-sm text-muted-foreground" title={`共 ${formatNumber(followedTags.total)} 个标签`}>共 {formatCompactNumber(followedTags.total)} 个标签</span>
         </div>
       </CardHeader>
 
@@ -193,8 +194,8 @@ function FollowTagsPanel({ route, followedTags }: { route: SettingsPageData["rou
                 <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                <span>内容 {tag.postCount}</span>
-                <span>关注 {tag.followerCount}</span>
+                <span title={`${formatNumber(tag.postCount)} 内容`}>内容 {formatCompactNumber(tag.postCount)}</span>
+                <span title={`${formatNumber(tag.followerCount)} 关注`}>关注 {formatCompactNumber(tag.followerCount)}</span>
               </div>
             </Link>
           ))}
@@ -287,7 +288,7 @@ function SocialUserListPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>{title}</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {users.total} 位用户</span>
+          <span className="text-sm text-muted-foreground" title={`共 ${formatNumber(users.total)} 位用户`}>共 {formatCompactNumber(users.total)} 位用户</span>
         </div>
       </CardHeader>
 
@@ -352,7 +353,7 @@ function PostListPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>{title}</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {posts.total} 条记录</span>
+          <span className="text-sm text-muted-foreground" title={`共 ${formatNumber(posts.total)} 条记录`}>共 {formatCompactNumber(posts.total)} 条记录</span>
         </div>
       </CardHeader>
 

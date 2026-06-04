@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { buildUserLevelThresholdOptions, buildVipLevelThresholdOptions } from "@/lib/access-threshold-options"
 import { AdminAppsSettingsForm } from "@/components/admin/admin-apps-settings-form"
 import { AdminBasicSettingsForm } from "@/components/admin/admin-basic-settings-form"
+import { AdminEditorToolbarSettingsForm } from "@/components/admin/admin-editor-toolbar-settings-form"
 import { AdminFooterLinksSettingsForm } from "@/components/admin/admin-footer-links-settings-form"
 import { AdminFriendLinksSettingsForm } from "@/components/admin/admin-friend-links-settings-form"
 import { AdminMarkdownEmojiSettingsForm } from "@/components/admin/admin-markdown-emoji-settings-form"
@@ -146,6 +147,10 @@ export default async function AdminSettingsPage(
 
         {resolved.section === "markdown-emoji" ? (
           <AdminMarkdownEmojiSettingsForm initialItems={siteSettings!.markdownEmojiMap} />
+        ) : null}
+
+        {resolved.section === "editor-toolbar" ? (
+          <AdminEditorToolbarSettingsForm initialSettings={siteSettings!.editorToolbar} />
         ) : null}
 
         {resolved.section === "footer-links" ? (

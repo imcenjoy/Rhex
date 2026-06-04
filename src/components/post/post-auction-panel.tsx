@@ -17,7 +17,7 @@ import { Slider } from "@/components/ui/slider"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/toast"
 import { buildLoginHrefWithRedirect, getCurrentBrowserAuthRedirectTarget } from "@/lib/auth-redirect"
-import { formatDateTime, formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatDateTime, formatNumber } from "@/lib/formatters"
 import type { SitePostItem } from "@/lib/posts"
 import { cn } from "@/lib/utils"
 
@@ -266,7 +266,9 @@ export function PostAuctionPanel({
           <div className="px-4 py-4 sm:px-5">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>已有 {formatNumber(auction.participantCount)} 人参与{isSealedBid ? "竞拍" : "拍卖"}</span>
+              <span title={`已有 ${formatNumber(auction.participantCount)} 人参与${isSealedBid ? "竞拍" : "拍卖"}`}>
+                已有 {formatCompactNumber(auction.participantCount)} 人参与{isSealedBid ? "竞拍" : "拍卖"}
+              </span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -421,9 +423,9 @@ export function PostAuctionPanel({
         title={isSealedBid && timing.hasEnded ? "全部竞拍记录" : isSealedBid ? "全部参与用户" : "全部参与记录"}
         description={isSealedBid
           ? timing.hasEnded
-            ? `竞拍已结束，按参与时间排序，共 ${formatNumber(participantsTotal)} 人，出价已公开。`
-            : `按最新参与时间排序，共 ${formatNumber(participantsTotal)} 人。`
-          : `按最新出价时间排序，共 ${formatNumber(participantsTotal)} 条。`}
+            ? `竞拍已结束，按参与时间排序，共 ${formatCompactNumber(participantsTotal)} 人，出价已公开。`
+            : `按最新参与时间排序，共 ${formatCompactNumber(participantsTotal)} 人。`
+          : `按最新出价时间排序，共 ${formatCompactNumber(participantsTotal)} 条。`}
         size="lg"
         footer={(
           <div className="flex w-full items-center justify-between gap-3">

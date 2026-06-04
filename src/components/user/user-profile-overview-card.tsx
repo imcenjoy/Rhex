@@ -8,7 +8,7 @@ import { FollowToggleButton } from "@/components/follow-toggle-button"
 import { RssSubscribeButton } from "@/components/rss/rss-subscribe-button"
 import { Modal } from "@/components/ui/modal"
 import { UserBlockToggleButton } from "@/components/user/user-block-toggle-button"
-import { formatNumber } from "@/lib/formatters"
+import { formatCompactNumber, formatNumber } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 interface UserProfileOverviewCardProps {
@@ -127,11 +127,11 @@ export function UserProfileOverviewCard({
 
                 <div className="flex min-w-0 flex-nowrap items-center gap-x-2 overflow-x-auto text-[11px] leading-5 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-x-4 sm:overflow-visible sm:text-sm sm:leading-6">
                   <span className="inline-flex shrink-0 items-baseline gap-1">
-                    <span className="font-semibold text-foreground">{formatNumber(likeCount)}</span>
+                    <span className="font-semibold tabular-nums text-foreground" title={`${formatNumber(likeCount)} 获赞`}>{formatCompactNumber(likeCount)}</span>
                     <span>获赞</span>
                   </span>
                   <span className="inline-flex shrink-0 items-baseline gap-1">
-                    <span className="font-semibold text-foreground">{formatNumber(followerCount)}</span>
+                    <span className="font-semibold tabular-nums text-foreground" title={`${formatNumber(followerCount)} 粉丝`}>{formatCompactNumber(followerCount)}</span>
                     <span>粉丝</span>
                   </span>
                   {followAction && !isBlocked ? (

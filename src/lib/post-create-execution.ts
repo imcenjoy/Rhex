@@ -7,9 +7,8 @@ import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 import "@/lib/ai/capabilities/bridge"
 import { triggerAiMention } from "@/lib/ai/mention-trigger"
 import { apiError } from "@/lib/api-route"
-import { revalidateContentListCaches } from "@/lib/content-list-cache"
+import { revalidateApprovedPostMutation } from "@/lib/content-mutation-revalidation"
 import { enqueueNewPostFollowNotifications } from "@/lib/follow-notifications"
-import { revalidateHomeSidebarStatsCache } from "@/lib/home-sidebar-stats"
 import { enqueueEvaluateUserLevelProgress } from "@/lib/level-system"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { recordApprovedPostTaskEvent } from "@/lib/task-center-service"
@@ -98,10 +97,13 @@ export async function executePostCreation(body: unknown, options: ExecutePostCre
     })
   }
 
-  revalidateUserSurfaceCache(result.author.id)
   if (!result.shouldPending) {
-    revalidateContentListCaches()
-    revalidateHomeSidebarStatsCache()
+    revalidateApprovedPostMutation({
+      postId: result.post.id,
+      postSlug: result.post.slug,
+      boardSlug: result.boardSlug,
+      authorId: result.author.id,
+    })
     expireTaxonomyCacheImmediately()
     void recordApprovedPostTaskEvent({
       type: "APPROVED_POST",
@@ -112,6 +114,9 @@ export async function executePostCreation(body: unknown, options: ExecutePostCre
     }).catch((error) => {
       console.warn("[post-create-execution] failed to record task progress", error)
     })
+  }
+  if (result.shouldPending) {
+    revalidateUserSurfaceCache(result.author.id)
   }
 
   void enqueueEvaluateUserLevelProgress(result.author.id, { notifyOnUpgrade: true })

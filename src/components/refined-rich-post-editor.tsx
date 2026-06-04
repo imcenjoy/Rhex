@@ -40,7 +40,7 @@ import { useEditorCommands } from "@/components/refined-rich-post-editor/use-edi
 import { useEditorPanels } from "@/components/refined-rich-post-editor/use-editor-panels"
 import { useEditorSelection } from "@/components/refined-rich-post-editor/use-editor-selection"
 import { useEditorViewState } from "@/components/refined-rich-post-editor/use-editor-view-state"
-import { useMarkdownEmojiMap, useMarkdownImageUploadEnabled } from "@/components/site-settings-provider"
+import { useEditorToolbarSettings, useMarkdownEmojiMap, useMarkdownImageUploadEnabled } from "@/components/site-settings-provider"
 import { useImageUpload } from "@/hooks/use-image-upload"
 import { getClientPlatform } from "@/lib/client-platform"
 import { cn } from "@/lib/utils"
@@ -179,6 +179,7 @@ export function RefinedRichPostEditor({
   const shortcutPlatform = useMemo(() => (isClient ? getClientPlatform() : "other"), [isClient])
   const markdownEmojiMap = useMarkdownEmojiMap(externalMarkdownEmojiMap)
   const markdownImageUploadEnabled = useMarkdownImageUploadEnabled(externalMarkdownImageUploadEnabled)
+  const toolbarSettings = useEditorToolbarSettings()
   const toolbarItems = useAddonEditorToolbarItems(context)
   const imageToolbarTip = markdownImageUploadEnabled ? TOOLBAR_TIPS.imageUpload : TOOLBAR_TIPS.imageRemote
 
@@ -477,6 +478,7 @@ export function RefinedRichPostEditor({
               context={context}
               visible={viewState.activeTab === "write" || viewState.activeTab === "live-preview"}
               disabled={disabled}
+              toolbarSettings={toolbarSettings}
               toolbarItems={toolbarItems}
               toolbarApi={toolbarApi}
               selectionStore={selectionStore}

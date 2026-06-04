@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useTransition } from "react"
 
+import { useCurrentUser } from "@/components/current-user-provider"
 import { toast } from "@/components/ui/toast"
 
 interface AutoCheckInOnHomeEnterProps {
@@ -17,6 +18,7 @@ function buildAutoCheckInStorageKey(userId: number, todayKey: string) {
 
 export function AutoCheckInOnHomeEnter({ enabled, todayKey, userId }: AutoCheckInOnHomeEnterProps) {
   const router = useRouter()
+  const { refresh: refreshCurrentUser } = useCurrentUser()
   const [isRefreshing, startTransition] = useTransition()
   const requestStartedRef = useRef(false)
 
@@ -51,6 +53,10 @@ export function AutoCheckInOnHomeEnter({ enabled, todayKey, userId }: AutoCheckI
           if (typeof window !== "undefined") {
             window.sessionStorage.setItem(storageKey, "done")
           }
+          void refreshCurrentUser()
+          startTransition(() => {
+            router.refresh()
+          })
           return
         }
 
@@ -58,6 +64,7 @@ export function AutoCheckInOnHomeEnter({ enabled, todayKey, userId }: AutoCheckI
         if (typeof window !== "undefined") {
           window.sessionStorage.setItem(storageKey, "done")
         }
+        void refreshCurrentUser()
         startTransition(() => {
           router.refresh()
         })
@@ -69,7 +76,7 @@ export function AutoCheckInOnHomeEnter({ enabled, todayKey, userId }: AutoCheckI
         requestStartedRef.current = false
         toast.error(error instanceof Error ? error.message : "自动签到失败，请稍后再试", "自动签到失败")
       })
-  }, [enabled, isRefreshing, router, todayKey, userId])
+  }, [enabled, isRefreshing, refreshCurrentUser, router, todayKey, userId])
 
   return null
 }

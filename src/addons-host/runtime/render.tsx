@@ -57,13 +57,13 @@ export function AddonRenderBlock({
   return (
     <>
       {normalizedStylesheets.map((item, index) => (
-        <style
+        <link
           key={`${blockKey}:style:${index}`}
-          dangerouslySetInnerHTML={{
-            __html: item.media
-              ? `@import url("${item.href}") ${item.media};`
-              : `@import url("${item.href}");`,
-          }}
+          rel="stylesheet"
+          href={item.href}
+          media={item.media}
+          data-addon-id={addonId}
+          data-addon-block={blockKey}
         />
       ))}
       {result.html ? (

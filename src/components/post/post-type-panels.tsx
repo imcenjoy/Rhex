@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Modal } from "@/components/ui/modal"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { formatDateTime, formatNumber, formatRelativeTime } from "@/lib/formatters"
+import { formatCompactNumber, formatDateTime, formatNumber, formatRelativeTime } from "@/lib/formatters"
 import { addPostBountyResolvedListener } from "@/lib/post-discussion-events"
 import { cn } from "@/lib/utils"
 
@@ -168,6 +168,7 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
   const isEndedWithoutDraw = hasReachedEndTime && !isDrawn
   const totalPrizeQuantity = lottery.prizes.reduce((sum, prize) => sum + prize.quantity, 0)
   const conditionCount = lottery.conditionGroups.reduce((sum, group) => sum + group.conditions.length, 0)
+  const remainingParticipantCount = Math.max((lottery.participantGoal ?? 0) - lottery.participantCount, 0)
   const goalProgress = lottery.participantGoal && lottery.participantGoal > 0
     ? Math.min(100, Math.round((lottery.participantCount / lottery.participantGoal) * 100))
     : null
@@ -253,7 +254,7 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
             description: isLocked
               ? `锁池时间：${formatDateTime(lottery.lockedAt ?? "")}`
               : lottery.triggerMode === "AUTO_PARTICIPANT_COUNT"
-                ? `参与人数达到 ${lottery.participantGoal ?? 0} 人后会自动开奖。`
+                ? `参与人数达到 ${formatCompactNumber(lottery.participantGoal ?? 0)} 人后会自动开奖。`
                 : lottery.endsAt
                   ? `预计结束时间：${formatDateTime(lottery.endsAt)}`
                   : "当前由楼主手动控制开奖时间。",
@@ -384,7 +385,7 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
           <div className="px-4 py-4 sm:px-5">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>已有 {formatNumber(participantTotal)} 人参与抽奖</span>
+              <span title={`已有 ${formatNumber(participantTotal)} 人参与抽奖`}>已有 {formatCompactNumber(participantTotal)} 人参与抽奖</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -441,7 +442,7 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">自动开奖进度</p>
-                    <p className="mt-1 text-xs text-muted-foreground">还差 {Math.max((lottery.participantGoal ?? 0) - lottery.participantCount, 0)} 人达到开奖门槛</p>
+                    <p className="mt-1 text-xs text-muted-foreground" title={`还差 ${formatNumber(remainingParticipantCount)} 人达到开奖门槛`}>还差 {formatCompactNumber(remainingParticipantCount)} 人达到开奖门槛</p>
                   </div>
                   <Badge variant="secondary" className="rounded-full">{goalProgress}%</Badge>
                 </div>
@@ -460,7 +461,7 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                     </span>
                     <p className="text-xs font-medium text-foreground">奖项</p>
                   </div>
-                  <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px]">{formatNumber(totalPrizeQuantity)} 份</Badge>
+                  <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px]" title={`${formatNumber(totalPrizeQuantity)} 份`}>{formatCompactNumber(totalPrizeQuantity)} 份</Badge>
                 </div>
                 <div className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
                   {lottery.prizes.map((prize) => (
@@ -469,11 +470,13 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-semibold text-foreground">{prize.title}</p>
                           <p className="mt-0.5 text-[10px] leading-5 text-muted-foreground">
-                            共 {prize.quantity} 名{isDrawn ? ` · 已开奖 ${prize.winnerCount} 名` : ""}
+                            <span title={`共 ${formatNumber(prize.quantity)} 名${isDrawn ? ` · 已开奖 ${formatNumber(prize.winnerCount)} 名` : ""}`}>
+                              共 {formatCompactNumber(prize.quantity)} 名{isDrawn ? ` · 已开奖 ${formatCompactNumber(prize.winnerCount)} 名` : ""}
+                            </span>
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1">
-                          <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px]">{formatNumber(prize.quantity)}</Badge>
+                          <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px]" title={formatNumber(prize.quantity)}>{formatCompactNumber(prize.quantity)}</Badge>
                           {prize.type === "POINTS" || prize.type === "VIP" ? (
                             <Badge variant="outline" className="rounded-full px-1.5 py-0 text-[10px]">自动发放</Badge>
                           ) : null}
@@ -603,7 +606,7 @@ export function LotteryPanel({ postId, isOwnerOrAdmin, lottery }: LotteryPanelPr
         open={participantModalOpen}
         onClose={() => setParticipantModalOpen(false)}
         title="抽奖参与用户"
-        description={`按最新参与时间排序，共 ${formatNumber(participantTotal)} 人。`}
+        description={`按最新参与时间排序，共 ${formatCompactNumber(participantTotal)} 人。`}
         size="lg"
         footer={(
           <div className="flex w-full items-center justify-between gap-3">

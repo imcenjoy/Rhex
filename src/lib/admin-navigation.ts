@@ -44,6 +44,7 @@ export type AdminNavKey = AdminTabKey | "apps" | "tasks"
 export type AdminSettingsSectionKey =
   | "profile"
   | "markdown-emoji"
+  | "editor-toolbar"
   | "footer-links"
   | "apps"
   | "registration"
@@ -104,6 +105,7 @@ export const adminTabs: AdminTabKey[] = [
 export const adminSettingsSections: AdminSettingsSectionKey[] = [
   "profile",
   "markdown-emoji",
+  "editor-toolbar",
   "footer-links",
   "apps",
   "registration",
@@ -120,6 +122,7 @@ export const adminSettingsSections: AdminSettingsSectionKey[] = [
 export const sectionsRequiringSiteSettings = new Set<AdminSettingsSectionKey>([
   "profile",
   "markdown-emoji",
+  "editor-toolbar",
   "footer-links",
   "apps",
   "registration",
@@ -158,6 +161,7 @@ export const adminSettingsGroups = [
     sections: [
       { key: "profile", label: "基础信息" },
       { key: "markdown-emoji", label: "Markdown 表情" },
+      { key: "editor-toolbar", label: "编辑器工具栏" },
       { key: "footer-links", label: "页脚导航" },
       { key: "apps", label: "顶部导航" },
     ],
