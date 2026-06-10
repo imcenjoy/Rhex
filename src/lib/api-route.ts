@@ -182,12 +182,60 @@ function toResponse<T>(result: ApiRouteResult<T>) {
   return NextResponse.json(result)
 }
 
+const REQUIRE_LOGIN_BYPASS_PATHS = [
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/forgot-password",
+  "/api/auth/verify-code",
+  "/api/auth/send-verification-code",
+  "/api/auth/pow",
+  "/api/auth/captcha",
+  "/api/auth/passkey",
+  "/api/auth/oauth",
+  "/api/auth/external",
+]
+
+function shouldBypassRequireLogin(request: Request) {
+  const url = new URL(request.url)
+
+  return REQUIRE_LOGIN_BYPASS_PATHS.some((path) => url.pathname.startsWith(path))
+}
+
+async function checkRequireLoginView(request: Request): Promise<Response | null> {
+  if (shouldBypassRequireLogin(request)) {
+    return null
+  }
+
+  try {
+    const [settings, currentUser] = await Promise.all([
+      import("@/lib/site-settings").then((m) => m.getSiteSettings()),
+      import("@/lib/auth").then((m) => m.getCurrentSessionActor()),
+    ])
+
+    if (settings.requireLoginToView && !currentUser) {
+      return NextResponse.json({ code: 401, message: "请先登录" }, { status: 401 })
+    }
+  } catch {
+    // 如果设置加载失败（如未安装数据库），不拦截
+  }
+
+  return null
+}
+
 export function createRouteHandler<T = unknown, C extends ApiRouteContext = ApiRouteContext>(
   handler: ApiRouteHandler<T, C>,
-  options?: { errorMessage?: string; logPrefix?: string; buildContext?: (request: Request, routeContext?: unknown) => Promise<C> },
+  options?: { errorMessage?: string; logPrefix?: string; bypassRequireLogin?: boolean; buildContext?: (request: Request, routeContext?: unknown) => Promise<C> },
 ) {
   return async function routeHandler(request: Request, routeContext?: unknown) {
     try {
+      if (!options?.bypassRequireLogin) {
+        const blocked = await checkRequireLoginView(request)
+
+        if (blocked) {
+          return blocked
+        }
+      }
+
       const context = options?.buildContext
         ? await options.buildContext(request, routeContext)
         : ({ request, routeContext } as C)
