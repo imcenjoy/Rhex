@@ -193,6 +193,7 @@ const REQUIRE_LOGIN_BYPASS_PATHS = [
   "/api/auth/passkey",
   "/api/auth/oauth",
   "/api/auth/external",
+  "/api/auth/addon-external",
 ]
 
 function shouldBypassRequireLogin(request: Request) {

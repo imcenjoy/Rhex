@@ -18,15 +18,16 @@ export function AuthGuard({ children, requireLoginToView, isLoggedIn }: AuthGuar
     if (isLoggedIn) return
     // 放行登录/注册等公开页面
     if (
-      pathname.startsWith("/auth/login") ||
-      pathname.startsWith("/auth/register") ||
-      pathname.startsWith("/auth/forgot-password") ||
+      pathname === "/login" ||
+      pathname === "/register" ||
+      pathname.startsWith("/forgot-password") ||
       pathname.startsWith("/auth/complete") ||
+      pathname.startsWith("/auth/passkey") ||
       pathname.startsWith("/_next/") ||
       pathname.startsWith("/favicon")
     ) return
 
-    const loginUrl = `/auth/login?redirect=${encodeURIComponent(pathname)}`
+    const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`
     router.replace(loginUrl)
   }, [requireLoginToView, isLoggedIn, pathname, router])
 
