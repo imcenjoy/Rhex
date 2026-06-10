@@ -109,6 +109,9 @@ function normalizeLegacyServerSiteSettings(data: ServerSiteSettingsData): Server
     passwordChangeRequireEmailVerification: typeof data.passwordChangeRequireEmailVerification === "boolean"
       ? data.passwordChangeRequireEmailVerification
       : defaults.passwordChangeRequireEmailVerification,
+    requireLoginToView: typeof data.requireLoginToView === "boolean"
+      ? data.requireLoginToView
+      : defaults.requireLoginToView,
     registerPasswordMinLength: typeof data.registerPasswordMinLength === "number" && Number.isFinite(data.registerPasswordMinLength)
       ? data.registerPasswordMinLength
       : defaults.registerPasswordMinLength,
@@ -572,6 +575,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     sessionIpMismatchLogoutEnabled: siteSecuritySettings.sessionIpMismatchLogoutEnabled,
     loginIpChangeEmailAlertEnabled: siteSecuritySettings.loginIpChangeEmailAlertEnabled,
     passwordChangeRequireEmailVerification: siteSecuritySettings.passwordChangeRequireEmailVerification,
+    requireLoginToView: siteSecuritySettings.requireLoginToView,
     registerPasswordMinLength: registerPasswordPolicySettings.minLength,
     registerPasswordStrength: registerPasswordPolicySettings.strength,
     usernameSensitiveWordsEnabled: usernameSensitiveWordSettings.usernameSensitiveWordsEnabled,

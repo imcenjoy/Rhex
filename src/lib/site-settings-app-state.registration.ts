@@ -465,6 +465,7 @@ export function resolveSiteSecuritySettings(options: {
   sessionIpMismatchLogoutEnabledFallback?: boolean
   loginIpChangeEmailAlertEnabledFallback?: boolean
   passwordChangeRequireEmailVerificationFallback?: boolean
+  requireLoginToViewFallback?: boolean
 } = {}): SiteSecuritySettings {
   const siteSettingsState = readSiteSettingsState(options.appStateJson)
   const siteSecurity = isRecord(siteSettingsState.siteSecurity)
@@ -484,6 +485,10 @@ export function resolveSiteSecuritySettings(options: {
       typeof siteSecurity.passwordChangeRequireEmailVerification === "boolean"
         ? siteSecurity.passwordChangeRequireEmailVerification
         : options.passwordChangeRequireEmailVerificationFallback ?? false,
+    requireLoginToView:
+      typeof siteSecurity.requireLoginToView === "boolean"
+        ? siteSecurity.requireLoginToView
+        : options.requireLoginToViewFallback ?? false,
   }
 }
 
@@ -499,6 +504,7 @@ export function mergeSiteSecuritySettings(
       sessionIpMismatchLogoutEnabled: Boolean(input.sessionIpMismatchLogoutEnabled),
       loginIpChangeEmailAlertEnabled: Boolean(input.loginIpChangeEmailAlertEnabled),
       passwordChangeRequireEmailVerification: Boolean(input.passwordChangeRequireEmailVerification),
+      requireLoginToView: Boolean(input.requireLoginToView),
     },
   })
 }

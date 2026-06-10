@@ -120,6 +120,7 @@ export const defaultSiteSettingsCreateInput = {
         sessionIpMismatchLogoutEnabled: true,
         loginIpChangeEmailAlertEnabled: false,
         passwordChangeRequireEmailVerification: false,
+        requireLoginToView: false,
       },
       checkInStreak: {
         enabled: true,

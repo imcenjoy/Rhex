@@ -26,8 +26,10 @@ import { hasDatabaseUrl } from "@/lib/db-status"
 import { DEFAULT_SITE_ICON_PATH, resolveSiteIconPath } from "@/lib/site-branding"
 import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
 import { getConfiguredSiteOrigin } from "@/lib/site-origin"
+import { getCurrentUser } from "@/lib/auth"
 import { getSiteSettings } from "@/lib/site-settings"
 import { buildVipNameColorStyleVariables } from "@/lib/vip-name-colors"
+import { AuthGuard } from "@/components/auth-guard"
 
 function serializeCssVariables(style: CSSProperties) {
   const declarations = Object.entries(style)
@@ -94,17 +96,18 @@ export async function generateRootMetadata(): Promise<Metadata> {
 export async function RootRuntimeProviders({ children }: { children: React.ReactNode }) {
   await connection()
 
-  const [settings, editorProviders, editorToolbarItems, addonSurfaceOverrides, footerHiddenPaths] = await Promise.all([
+  const [settings, editorProviders, editorToolbarItems, addonSurfaceOverrides, footerHiddenPaths, currentUser] = await Promise.all([
     getSiteSettings(),
     listAddonEditorProviderDescriptors(),
     listAddonEditorToolbarItemDescriptors(),
     listAddonSurfaceOverrideDescriptors(),
     getPublishedCustomPageFooterHiddenPaths(),
+    getCurrentUser(),
   ])
   const vipNameColorCss = serializeCssVariables(buildVipNameColorStyleVariables(settings.vipNameColors) as CSSProperties)
   const rhexSession = {
-    isAuthenticated: false,
-    user: null,
+    isAuthenticated: Boolean(currentUser),
+    user: currentUser,
   }
   const rhexSite = settings
 
@@ -139,7 +142,9 @@ export async function RootRuntimeProviders({ children }: { children: React.React
                   <Suspense fallback={null}>
                     <GlobalNavigationProgress />
                   </Suspense>
-                  {children}
+                  <AuthGuard requireLoginToView={settings.requireLoginToView} isLoggedIn={Boolean(currentUser)}>
+                    {children}
+                  </AuthGuard>
                   <ConditionalSiteFooter hiddenPaths={footerHiddenPaths}>
                     <>
                       <SiteFooter />

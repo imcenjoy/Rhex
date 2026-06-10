@@ -113,6 +113,7 @@ export interface AdminBasicSettingsInitialSettings {
   sessionIpMismatchLogoutEnabled: boolean
   loginIpChangeEmailAlertEnabled: boolean
   passwordChangeRequireEmailVerification: boolean
+  requireLoginToView: boolean
   registerPasswordMinLength: number
   registerPasswordStrength: PasswordStrength
   usernameSensitiveWordsEnabled: boolean
@@ -273,6 +274,7 @@ export interface AdminBasicSettingsDraft {
   sessionIpMismatchLogoutEnabled: boolean
   loginIpChangeEmailAlertEnabled: boolean
   passwordChangeRequireEmailVerification: boolean
+  requireLoginToView: boolean
   registerPasswordMinLength: string
   registerPasswordStrength: PasswordStrength
   usernameSensitiveWordsEnabled: boolean
@@ -514,6 +516,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     sessionIpMismatchLogoutEnabled: coerceBoolean(initialSettings.sessionIpMismatchLogoutEnabled, true),
     loginIpChangeEmailAlertEnabled: coerceBoolean(initialSettings.loginIpChangeEmailAlertEnabled, false),
     passwordChangeRequireEmailVerification: coerceBoolean(initialSettings.passwordChangeRequireEmailVerification, false),
+    requireLoginToView: coerceBoolean(initialSettings.requireLoginToView, false),
     registerPasswordMinLength: coerceNumberString(initialSettings.registerPasswordMinLength, 6),
     registerPasswordStrength: initialSettings.registerPasswordStrength ?? "LOW",
     usernameSensitiveWordsEnabled: coerceBoolean(initialSettings.usernameSensitiveWordsEnabled, false),
@@ -650,6 +653,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       sessionIpMismatchLogoutEnabled: draft.sessionIpMismatchLogoutEnabled,
       loginIpChangeEmailAlertEnabled: draft.loginIpChangeEmailAlertEnabled,
       passwordChangeRequireEmailVerification: draft.passwordChangeRequireEmailVerification,
+      requireLoginToView: draft.requireLoginToView,
       registerPasswordMinLength: Number(draft.registerPasswordMinLength),
       registerPasswordStrength: draft.registerPasswordStrength,
       usernameSensitiveWordsEnabled: draft.usernameSensitiveWordsEnabled,

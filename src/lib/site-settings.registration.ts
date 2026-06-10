@@ -23,6 +23,7 @@ export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSetti
   sessionIpMismatchLogoutEnabled: boolean
   loginIpChangeEmailAlertEnabled: boolean
   passwordChangeRequireEmailVerification: boolean
+  requireLoginToView: boolean
   registerPasswordMinLength: number
   registerPasswordStrength: PasswordStrength
   registerEmailWhitelistEnabled: boolean
