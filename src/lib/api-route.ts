@@ -6,6 +6,47 @@ import { ContentSafetyError } from "@/lib/content-safety"
 import type { SessionActor } from "@/db/session-actor-queries"
 import { PublicRouteError, isPublicRouteError } from "@/lib/public-route-error"
 
+/** API 认证放行路径（登录/注册/OAuth 等） */
+const REQUIRE_LOGIN_BYPASS_PATHS = [
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/forgot-password",
+  "/api/auth/verify-code",
+  "/api/auth/send-verification-code",
+  "/api/auth/pow",
+  "/api/auth/captcha",
+  "/api/auth/passkey",
+  "/api/auth/oauth",
+  "/api/auth/external",
+  "/api/auth/addon-external",
+  "/api/auth/complete",
+  "/api/internal/revalidate-content",
+]
+
+function shouldBypassRequireLogin(request: Request) {
+  const url = new URL(request.url)
+  return REQUIRE_LOGIN_BYPASS_PATHS.some((path) => url.pathname.startsWith(path))
+}
+
+async function checkRequireLoginView(request: Request): Promise<Response | null> {
+  if (shouldBypassRequireLogin(request)) {
+    return null
+  }
+
+  try {
+    const { getCurrentSessionActor } = await import("@/lib/auth")
+    const currentUser = await getCurrentSessionActor()
+
+    if (!currentUser) {
+      return NextResponse.json({ code: 401, message: "请先登录" }, { status: 401 })
+    }
+  } catch {
+    // 设置加载失败时不拦截
+  }
+
+  return null
+}
+
 type AdminRouteActor = {
   id: number
   username: string
@@ -184,10 +225,18 @@ function toResponse<T>(result: ApiRouteResult<T>) {
 
 export function createRouteHandler<T = unknown, C extends ApiRouteContext = ApiRouteContext>(
   handler: ApiRouteHandler<T, C>,
-  options?: { errorMessage?: string; logPrefix?: string; buildContext?: (request: Request, routeContext?: unknown) => Promise<C> },
+  options?: { errorMessage?: string; logPrefix?: string; bypassRequireLogin?: boolean; buildContext?: (request: Request, routeContext?: unknown) => Promise<C> },
 ) {
   return async function routeHandler(request: Request, routeContext?: unknown) {
     try {
+      if (!options?.bypassRequireLogin) {
+        const blocked = await checkRequireLoginView(request)
+
+        if (blocked) {
+          return blocked
+        }
+      }
+
       const context = options?.buildContext
         ? await options.buildContext(request, routeContext)
         : ({ request, routeContext } as C)

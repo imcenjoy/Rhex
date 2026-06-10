@@ -86,4 +86,5 @@ export const POST = createRouteHandler(async ({ request }) => {
 }, {
   errorMessage: "刷新缓存失败",
   logPrefix: "[api/internal/revalidate-content] unexpected error",
+  bypassRequireLogin: true,
 })

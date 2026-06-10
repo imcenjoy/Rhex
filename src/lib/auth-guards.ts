@@ -25,6 +25,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/external",
   "/api/auth/addon-external",
   "/api/auth/complete",
+  "/api/internal/revalidate-content",
 ]
 
 function isPublicPagePath(pathname: string) {
