@@ -8,7 +8,7 @@ import {
 import { listAddonHomeFeedTabs } from "@/lib/addon-home-feed-providers"
 import { resolveDefaultAddonHomeFeedTab } from "@/lib/home-feed-tabs"
 
-export const revalidate = 30
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata(): Promise<Metadata> {
   const defaultAddonTab = resolveDefaultAddonHomeFeedTab(await listAddonHomeFeedTabs())
@@ -28,6 +28,3 @@ export default async function HomePage() {
 
   return <HomeFeedPage sort="latest" autoCheckInOnEnter />
 }
-
-
-

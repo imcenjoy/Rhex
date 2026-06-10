@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { generateHomeFeedMetadata, HomeFeedPage } from "@/app/home-feed-page"
 
-export const revalidate = 30
+export const dynamic = "force-dynamic"
 
 interface HomeFeedPageRouteProps {
   params: Promise<{ page: string }>
