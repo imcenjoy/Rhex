@@ -374,6 +374,14 @@ export function AdminRegistrationSettingsForm({
               />
               <p className="text-xs leading-6 text-muted-foreground">开启后，用户中心修改密码除了校验当前密码，还必须输入发送到已验证邮箱的验证码。前台也会提前检查邮箱和邮件能力，不满足条件时直接提示不可用。</p>
             </FieldGroup>
+            <FieldGroup title="强制登录">
+              <AdminBooleanSelectField
+                label="登录后才能查看站点"
+                checked={draft.requireLoginToView}
+                onChange={(value) => updateDraftField("requireLoginToView", value)}
+              />
+              <p className="text-xs leading-6 text-muted-foreground">开启后，未登录用户无法查看任何帖子和分区（包括帖子标题），所有页面重定向到登录页。API 也会返回 401。</p>
+            </FieldGroup>
             <FieldGroup title="密码策略">
               <TextField
                 label="最小密码位数"

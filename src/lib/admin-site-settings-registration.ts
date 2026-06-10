@@ -102,6 +102,9 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const passwordChangeRequireEmailVerification = "passwordChangeRequireEmailVerification" in body
     ? Boolean(body.passwordChangeRequireEmailVerification)
     : existingSiteSecuritySettings.passwordChangeRequireEmailVerification
+  const requireLoginToView = "requireLoginToView" in body
+    ? Boolean(body.requireLoginToView)
+    : existingSiteSecuritySettings.requireLoginToView
   const registerPasswordMinLength = normalizePasswordMinLength(
     "registerPasswordMinLength" in body ? body.registerPasswordMinLength : undefined,
     existingRegisterPasswordPolicySettings.minLength,
@@ -279,6 +282,7 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     sessionIpMismatchLogoutEnabled,
     loginIpChangeEmailAlertEnabled,
     passwordChangeRequireEmailVerification,
+    requireLoginToView,
   })
   const appStateWithUsernameSensitiveWords = mergeUsernameSensitiveWordSettings(appStateWithSiteSecurity, {
     usernameSensitiveWordsEnabled,
